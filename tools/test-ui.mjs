@@ -39,6 +39,7 @@ const document = {
   createElement: () => El("tmp")
 };
 
+const alerts = [];
 const sandbox = {
   console,
   document,
@@ -46,13 +47,13 @@ const sandbox = {
   clearTimeout: () => {},
   getComputedStyle: () => ({ lineHeight: "22px" }),
   confirm: () => true,
-  alert: () => {}
+  alert: (m) => { alerts.push(String(m)); }
 };
 sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 
-for (const f of ["assets/vendor/jscpp.js", "assets/js/analyzer.js", "assets/js/runner.js", "assets/js/problems.js", "assets/js/app.js"]) {
+for (const f of ["assets/vendor/jscpp.js", "assets/js/analyzer.js", "assets/js/runner.js", "assets/js/problems.js", "assets/js/prompt.js", "assets/js/app.js"]) {
   vm.runInContext(readFileSync(path.join(root, f), "utf8"), sandbox, { filename: f });
 }
 function flush() { while (timers.length) timers.shift()(); }
@@ -120,8 +121,37 @@ check("题目框与批改反馈框已加入页面", store["problem-text"] !== un
 store["problem-text"].value = "7-1 两个数的和";
 store["pta-feedback"].value = "测试点 2：答案错误";
 check("两个框可以正常写入", store["problem-text"].value.indexOf("两个数的和") >= 0 && store["pta-feedback"].value.indexOf("答案错误") >= 0);
-check("提示词按钮与脚本已移除", html.indexOf("btn-copy-prompt") < 0 && html.indexOf("prompt.js") < 0);
 check("新面板使用灰粉色主题", /class="panel subject"/.test(html));
+
+console.log("=== 答案与解析 / 练习（提示词生成） ===");
+check("答案与解析按钮已加入", html.indexOf("btn-answer") >= 0);
+check("练习模块已加入", html.indexOf('class="panel practice"') >= 0 && html.indexOf("btn-practice") >= 0);
+check("提示词脚本已引入", html.indexOf("assets/js/prompt.js") >= 0);
+
+alerts.length = 0;
+store["problem-text"].value = "";
+store["btn-answer"].dispatch("click");
+check("题目为空时先提醒粘贴题目", alerts.length > 0 && /题目/.test(alerts[0]), "alerts=" + alerts.length);
+
+store["problem-text"].value = "7-1 两数求和\n输入 a 和 b，输出 a + b。";
+store.code.value = '#include <stdio.h>\nint main(){ int a; scanf("%d", a); return 0; }';
+store.code.dispatch("input");
+flush();
+store["btn-answer"].dispatch("click");
+check("答案面板出现", !store["panel-ai"].classList.contains("hidden"));
+check("提示词含题目原文", store["prompt-out"].value.indexOf("两数求和") >= 0);
+check("提示词要求逐行注释", /每一行末尾/.test(store["prompt-out"].value));
+check("提示词要求列出易错点", /容易出错的地方/.test(store["prompt-out"].value));
+check("提示词带上自动检查出的错误点", /scanf/.test(store["prompt-out"].value), store["prompt-out"].value.slice(0, 120));
+check("提示词带上 PTA 批改提示", store["prompt-out"].value.indexOf("答案错误") >= 0);
+
+store["practice-count"].value = "5";
+store["chk-practice-answer"].checked = false;
+store["btn-practice"].dispatch("click");
+check("练习提示词含出题数量", store["prompt-out"].value.indexOf("5 道") >= 0);
+check("练习提示词要求先不给答案", /不要给答案/.test(store["prompt-out"].value));
+check("练习提示词要求同题型换数据", /题型相同/.test(store["prompt-out"].value));
+check("练习提示词带上错误点", /我在这道题上犯过的错误|PTA 提交后的批改提示/.test(store["prompt-out"].value));
 
 console.log("=== 布局回归：错误列表不能盖住下方面板 ===");
 const css = readFileSync(path.join(root, "assets/css/styles.css"), "utf8");

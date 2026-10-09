@@ -101,6 +101,19 @@
         <textarea id="problem-text" spellcheck="false" placeholder="例如：&#10;7-1 两个数的和&#10;输入格式：输入在一行中给出两个整数 a 和 b。&#10;输出格式：在一行中输出 a + b 的值。"></textarea>
       </label>
 
+      <div class="ai-row">
+        <span class="ai-label">答案与解析</span>
+        <select id="ai-target" class="select select-tiny">
+          <option value="chatgpt">ChatGPT</option>
+          <option value="deepseek">DeepSeek</option>
+          <option value="kimi">Kimi</option>
+          <option value="doubao">豆包</option>
+          <option value="tongyi">通义</option>
+        </select>
+        <button id="btn-answer" class="btn tiny primary">生成答案与解析</button>
+      </div>
+      <p class="ai-hint">粘好上面的题目后点这个按钮：页面会按<b>你的题目 + 你的代码 + 错误点</b>拼好一段提示词并自动复制，同时打开你选的 AI 网站——到那边按 Ctrl + V 粘贴发送，AI 就会给出<b>每行都带注释的答案</b>和<b>容易出错的地方</b>。<b>这个页面自己不联网、不含 AI，不会自动去搜答案。</b></p>
+
       <label class="field">
         <span>应用修改：把 PTA 提交后给出的批改提示原文粘进来</span>
         <textarea id="pta-feedback" spellcheck="false" placeholder="例如：&#10;测试点 2　答案错误&#10;测试点 3　格式错误"></textarea>
@@ -110,6 +123,40 @@
         <b>「应用修改」是什么？</b>就是 PTA 在你提交作业之后给出的批改提示，它只负责指出<b>你的问题是什么</b>——比如「答案错误」「格式错误」「段错误」「运行超时」「测试点 3 未通过」。它不会告诉你为什么错、怎么改，新手看不懂很正常：把那段提示原样抄进上面的框就行。这个框的作用只是把 PTA 指出的问题记下来，好和下面的检查结果对着看。
       </div>
 
+    </div>
+
+    <div class="panel practice">
+      <div class="panel-head">
+        <h2>练习</h2>
+        <div class="panel-actions"><span class="dim">按题目和你的错误点出相似题</span></div>
+      </div>
+
+      <div class="field-note">
+        <b>怎么用：</b>请把 PTA 上这道题的<b>全部文字完整复制</b>到上面的「题目」框里——题干、输入格式、输出格式、样例一个都别漏，题目不完整，生成的练习也会跑偏。然后点下面的按钮：它会把<b>你的题目 + 你这次的错误点</b>一起交给 AI，让 AI 随机出几道「题型相同、数据不同」的新题，帮你把这类题练熟。
+      </div>
+
+      <div class="ai-row">
+        <span class="ai-label">出题数量</span>
+        <select id="practice-count" class="select select-tiny">
+          <option value="3">3 题</option>
+          <option value="5" selected>5 题</option>
+          <option value="8">8 题</option>
+        </select>
+        <button id="btn-practice" class="btn tiny primary">生成相似练习题</button>
+      </div>
+      <label class="check"><input type="checkbox" id="chk-practice-answer"> 连参考答案一起给（不勾选＝先只出题，等我做完再让 AI 批改）</label>
+    </div>
+
+    <div id="panel-ai" class="panel ai-panel hidden">
+      <div class="panel-head">
+        <h2>发给 AI 的提示词</h2>
+        <div class="panel-actions">
+          <span id="ai-status" class="dim">还没有生成。</span>
+          <button id="btn-copy-prompt" class="btn tiny">再复制一次</button>
+        </div>
+      </div>
+      <p class="ai-hint">下面这段就是发给 AI 的内容，已经自动复制过。去刚打开的页面按 Ctrl + V 粘贴发送即可；如果没复制成功，就手动全选这段文字复制。</p>
+      <textarea id="prompt-out" class="prompt-out" readonly spellcheck="false"></textarea>
     </div>
   </section>
 
@@ -244,6 +291,7 @@ printf("%d", a);</pre>
 <script src="assets/js/analyzer.js"></script>
 <script src="assets/js/runner.js"></script>
 <script src="assets/js/problems.js"></script>
+<script src="assets/js/prompt.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
 </html>

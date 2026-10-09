@@ -11,6 +11,15 @@
 
   var state = { findings: [], timer: null, currentProblem: null, lastRun: null };
 
+  /* 会打开的 AI 网站。prefill 为 true 表示该站点支持用网址带上提问内容。 */
+  var AI_TARGETS = {
+    chatgpt: { label: "ChatGPT", url: "https://chatgpt.com/?q=", prefill: true },
+    deepseek: { label: "DeepSeek", url: "https://chat.deepseek.com/" },
+    kimi: { label: "Kimi", url: "https://www.kimi.com/" },
+    doubao: { label: "豆包", url: "https://www.doubao.com/chat/" },
+    tongyi: { label: "通义", url: "https://www.tongyi.com/" }
+  };
+
   var SEV = {
     error: { label: "错误", cls: "sev-error", mark: "✖", hint: "这样写编译器一定会报错" },
     warning: { label: "很可能有问题", cls: "sev-warn", mark: "!", hint: "代码能编译，但行为多半不是你要的" },
@@ -83,6 +92,96 @@
     $("chk-strict").addEventListener("change", function () {
       if (state.lastRun) renderRunResult(state.lastRun);
     });
+
+    $("btn-answer").addEventListener("click", function () { showPrompt("answer"); });
+    $("btn-practice").addEventListener("click", function () { showPrompt("practice"); });
+    $("btn-copy-prompt").addEventListener("click", function () {
+      var box = $("prompt-out");
+      if (!box.value) return;
+      copyText(box.value, function (ok) {
+        setAiStatus(ok ? "已复制到剪贴板。" : "复制失败：请手动全选下面的提示词。");
+      });
+    });
+  }
+
+  /* ---------- 提示词：本页面不联网，只把文本拼好交给使用者自己的 AI ---------- */
+  function needProblem() {
+    var box = $("problem-text");
+    if (!box.value.trim()) {
+      alert("请先把你 PTA 上的题目整段粘贴到上面的「题目」框里（题干、输入格式、输出格式、样例都要），再点这个按钮。");
+      box.focus();
+      return false;
+    }
+    return true;
+  }
+
+  function setAiStatus(text) {
+    $("ai-status").textContent = text;
+  }
+
+  function showPrompt(kind) {
+    if (!needProblem() || !window.PTAPrompt) return;
+    var ctx = {
+      problem: $("problem-text").value,
+      code: $("code").value,
+      feedback: $("pta-feedback").value,
+      findings: state.findings
+    };
+    var text;
+    if (kind === "answer") {
+      text = window.PTAPrompt.buildAnswer(ctx);
+    } else {
+      ctx.count = parseInt($("practice-count").value, 10) || 5;
+      ctx.withAnswer = $("chk-practice-answer").checked;
+      text = window.PTAPrompt.buildPractice(ctx);
+    }
+
+    var target = AI_TARGETS[$("ai-target").value] || AI_TARGETS.chatgpt;
+    $("prompt-out").value = text;
+    $("panel-ai").classList.remove("hidden");
+    copyText(text, function (ok) {
+      setAiStatus(ok
+        ? "提示词已复制，去 " + target.label + " 按 Ctrl + V 粘贴发送"
+        : "复制失败：请手动全选下面的提示词复制");
+    });
+    openTarget(target, text);
+    $("panel-ai").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function openTarget(target, text) {
+    if (typeof window.open !== "function") return;
+    var url = target.prefill ? target.url + encodeURIComponent(text) : target.url;
+    try { window.open(url, "_blank", "noopener"); } catch (err) { /* 被浏览器拦截就只靠剪贴板 */ }
+  }
+
+  function fallbackCopy(text) {
+    if (!document.body || typeof document.body.appendChild !== "function") return false;
+    try {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.top = "-1000px";
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = !!(document.execCommand && document.execCommand("copy"));
+      document.body.removeChild(ta);
+      return ok;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function copyText(text, done) {
+    /* 先试同步方案：在用户点击的回调里，execCommand 的成功率高于异步的 Clipboard API。 */
+    if (fallbackCopy(text)) { done(true); return; }
+    var nav = (typeof navigator !== "undefined") ? navigator : null;
+    if (nav && nav.clipboard && typeof nav.clipboard.writeText === "function") {
+      try {
+        nav.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+        return;
+      } catch (err) { /* 继续往下走 */ }
+    }
+    done(false);
   }
 
   function insertAtCursor(el, text) {

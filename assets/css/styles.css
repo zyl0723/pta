@@ -263,6 +263,21 @@ pre.stdout {
 
 .footer { text-align: center; color: var(--muted); font-size: 12.5px; padding: 20px 24px 28px; }
 
+/* ---------- 答案与解析 / 练习（提示词） ---------- */
+.ai-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.ai-label { font-size: 12.5px; color: #8a6272; }
+.select-tiny { padding: 6px 8px; font-size: 12.5px; max-width: 140px; }
+.ai-hint { font-size: 12.5px; line-height: 1.75; color: #7d5a68; margin: 8px 0 14px; }
+.ai-hint code { background: #f4e4ea; }
+.panel.practice .field-note { margin-top: 0; }
+.panel.ai-panel { border-color: var(--line-strong); }
+.prompt-out {
+  margin-top: 10px; width: 100%; min-height: 200px; resize: vertical;
+  font: 400 12.5px/20px var(--mono); padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--line-strong); background: #fffcfd; color: #3c465c; outline: none;
+}
+.prompt-out:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
 /* ---------- 响应式 ---------- */
 @media (max-width: 1000px) {
   .layout { grid-template-columns: 1fr; }
