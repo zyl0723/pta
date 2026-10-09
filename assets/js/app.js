@@ -42,6 +42,7 @@
     $("code").value = STARTER;
     fillProblemSelect();
     bindEvents();
+    initWelcome();
     refreshGutter();
     analyzeNow();
   }
@@ -104,6 +105,45 @@
         setAiStatus(ok ? "已复制到剪贴板。" : "复制失败：请手动全选下面的提示词。");
       });
     });
+  }
+
+  /* ---------- 进站提示弹窗：勾了「不再提示」就记在本机，下次直接不弹 ---------- */
+  var WELCOME_KEY = "pta-welcome-mute";
+
+  function welcomeMuted() {
+    try {
+      return !!(window.localStorage && window.localStorage.getItem(WELCOME_KEY) === "1");
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function muteWelcome() {
+    try {
+      if (window.localStorage) window.localStorage.setItem(WELCOME_KEY, "1");
+    } catch (err) { /* 浏览器不让存就算了，大不了下次再弹一次 */ }
+  }
+
+  function initWelcome() {
+    var box = $("welcome");
+    if (!box) return;
+
+    function onKey(e) {
+      if (e && e.key === "Escape") close();
+    }
+    function close() {
+      if ($("chk-welcome-mute").checked) muteWelcome();
+      box.classList.add("hidden");
+      if (typeof document.removeEventListener === "function") document.removeEventListener("keydown", onKey);
+    }
+
+    $("btn-welcome-x").addEventListener("click", close);
+    $("btn-welcome-ok").addEventListener("click", close);
+    box.addEventListener("click", function (e) { if (e.target === box) close(); });
+    if (typeof document.addEventListener === "function") document.addEventListener("keydown", onKey);
+
+    if (welcomeMuted()) { box.classList.add("hidden"); return; }
+    box.classList.remove("hidden");
   }
 
   /* ---------- 提示词：本页面不联网，只把文本拼好交给使用者自己的 AI ---------- */

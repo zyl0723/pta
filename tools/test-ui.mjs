@@ -51,6 +51,12 @@ const sandbox = {
   confirm: () => true,
   alert: (m) => { alerts.push(String(m)); }
 };
+const lsData = new Map();
+sandbox.localStorage = {
+  getItem: (k) => (lsData.has(k) ? lsData.get(k) : null),
+  setItem: (k, v) => { lsData.set(k, String(v)); },
+  removeItem: (k) => { lsData.delete(k); }
+};
 sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
@@ -171,8 +177,32 @@ store["problem-text"].value = "7-1 两数求和\n输入 a 和 b，输出 a + b�
 store["btn-answer"].dispatch("click");
 check("“答案与解析”只拼提示词并提示去自己的 AI 粘贴", /Ctrl \+ V/.test(store["ai-status"].textContent), store["ai-status"].textContent);
 
-console.log("=== 布局回归：错误列表不能盖住下方面板 ===");
+console.log("=== 进站提示弹窗 ===");
 const css = readFileSync(path.join(root, "assets/css/styles.css"), "utf8");
+check("进站时默认弹出提示", !store["welcome"].classList.contains("hidden"));
+check("弹窗有标题与「不再提示」勾选框", /id="welcome-title"/.test(html) && /id="chk-welcome-mute"/.test(html));
+check("弹窗有右上角关闭按钮", /id="btn-welcome-x"/.test(html));
+check("弹窗背景是粉色系、和页面同族", /\.welcome\s*\{[^}]*rgba\(150, 96, 120/.test(css) && /\.welcome-card\s*\{[^}]*#fdf7f9/.test(css));
+check("弹窗说明「不接 AI 也能用」", /不接 AI 也能用/.test(html));
+check("弹窗说明「只检查已经写好的代码」", /只检查你已经写好的代码/.test(html));
+check("弹窗说明想更聪明要自己有 AI 账号", /得你自己有 AI/.test(html) && /你自己账号/.test(html));
+check("弹窗末尾小字说明来由", /嫌反复拍照问 AI 太麻烦/.test(html) && /welcome-foot/.test(html));
+
+store["btn-welcome-x"].dispatch("click");
+check("点右上角叉叉可以关掉", store["welcome"].classList.contains("hidden"));
+check("没勾「不再提示」时不写本机记录", lsData.get("pta-welcome-mute") === undefined);
+
+store["welcome"].classList.remove("hidden");
+store["chk-welcome-mute"].checked = true;
+store["btn-welcome-ok"].dispatch("click");
+check("勾「不再提示」后关掉会记在本机", lsData.get("pta-welcome-mute") === "1");
+
+for (const el of Object.values(store)) { el.classList._s.clear(); el._handlers = {}; }
+vm.runInContext(readFileSync(path.join(root, "assets/js/app.js"), "utf8"), sandbox, { filename: "app.js" });
+flush();
+check("勾过之后再次进站不再弹出", store["welcome"].classList.contains("hidden"));
+
+console.log("=== 布局回归：错误列表不能盖住下方面板 ===");
 check("检查结果面板不再吸附（sticky 会盖住紧随其后的面板）", html.indexOf("panel sticky") < 0, "index.html 里仍存在 panel sticky");
 check("样式里不再给结果面板设 sticky", !/\.panel\.sticky\s*\{/.test(css));
 check("错误列表有最大高度，长列表只在自己框内滚动", /\.findings\s*\{[^}]*max-height/.test(css));
