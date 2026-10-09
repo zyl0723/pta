@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="5 3.5 38 38" width="38" height="38" role="img" aria-label="猫咪吉祥物">
+  <defs>
+    <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffdfb"/>
+      <stop offset="1" stop-color="#ffe6ef"/>
+    </linearGradient>
+  </defs>
+  <g stroke="#8a6272" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M8.5 20 L7 4.5 L20.5 13 Z" fill="url(#fur)"/>
+    <path d="M39.5 20 L41 4.5 L27.5 13 Z" fill="url(#fur)"/>
+    <ellipse cx="24" cy="26" rx="17.5" ry="15" fill="url(#fur)"/>
+  </g>
+  <path d="M11 17.4 L10 8 L17.6 13.5 Z" fill="#f9a8c0"/>
+  <path d="M37 17.4 L38 8 L30.4 13.5 Z" fill="#f9a8c0"/>
+  <ellipse cx="17" cy="26" rx="4.3" ry="5.2" fill="#4a3038"/>
+  <ellipse cx="31" cy="26" rx="4.3" ry="5.2" fill="#4a3038"/>
+  <circle cx="18.7" cy="23.8" r="1.9" fill="#fff"/>
+  <circle cx="32.7" cy="23.8" r="1.9" fill="#fff"/>
+  <circle cx="15.6" cy="28.2" r="0.95" fill="#fff" opacity="0.8"/>
+  <circle cx="29.6" cy="28.2" r="0.95" fill="#fff" opacity="0.8"/>
+  <ellipse cx="10.2" cy="32.6" rx="4" ry="2.5" fill="#f79ab4" opacity="0.65"/>
+  <ellipse cx="37.8" cy="32.6" rx="4" ry="2.5" fill="#f79ab4" opacity="0.65"/>
+  <path d="M24 31 L22.1 29.1 L25.9 29.1 Z" fill="#ef7d9b"/>
+  <path d="M24 31.1 Q21.8 33.9 19.9 32" fill="none" stroke="#8a6272" stroke-width="1.25" stroke-linecap="round"/>
+  <path d="M24 31.1 Q26.2 33.9 28.1 32" fill="none" stroke="#8a6272" stroke-width="1.25" stroke-linecap="round"/>
+</svg>

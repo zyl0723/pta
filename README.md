@@ -140,6 +140,6 @@ tools/                  构建脚本、补丁、测试
 ## 作者与许可
 
 - 作者：**zyl0723**（<https://github.com/zyl0723>）。
-- 自有代码：页面（`index.html`、`assets/css/`、`assets/js/app.js`）、静态检查规则引擎（`assets/js/analyzer.js`）、运行与输出对比（`assets/js/runner.js`）、题库（`assets/js/problems.js`）、构建脚本与解释器补丁（`tools/`）、测试与文档，均由作者编写。
+- 自有代码：页面（`index.html`、`assets/css/`、`assets/js/app.js`）、静态检查规则引擎（`assets/js/analyzer.js`）、运行与输出对比（`assets/js/runner.js`）、题库（`assets/js/problems.js`）、猫咪图标（`assets/img/logo-cat.svg`，作者手绘的 SVG）、构建脚本与解释器补丁（`tools/`）、测试与文档，均由作者编写。
 - 自有代码目前未声明开源许可，保留所有权利。
 - 第三方组件随 `assets/vendor/jscpp.js` 分发（JSCPP 2.0.9、lodash 4.18.1、pegjs-util 1.4.21、printf 0.6.1，均为 MIT），版权归各自作者所有，许可全文见 THIRD-PARTY-NOTICES.md。
