@@ -52,7 +52,7 @@ sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 
-for (const f of ["assets/vendor/jscpp.js", "assets/js/analyzer.js", "assets/js/runner.js", "assets/js/problems.js", "assets/js/app.js"]) {
+for (const f of ["assets/vendor/jscpp.js", "assets/js/analyzer.js", "assets/js/runner.js", "assets/js/problems.js", "assets/js/prompt.js", "assets/js/app.js"]) {
   vm.runInContext(readFileSync(path.join(root, f), "utf8"), sandbox, { filename: f });
 }
 function flush() { while (timers.length) timers.shift()(); }
@@ -114,6 +114,35 @@ flush();
 store["btn-run"].dispatch("click");
 flush();
 check("语法错误提示含行号", /第 3 行/.test(store["run-body"].innerHTML) || /第 2 行/.test(store["run-body"].innerHTML), store["run-body"].innerHTML.slice(0, 240));
+
+console.log("=== 题目 / 提交反馈 / 提示词 ===");
+check("题目框与批改反馈框已加入页面", store["problem-text"] !== undefined && store["pta-feedback"] !== undefined);
+store.code.value = '#include <stdio.h>\nint main(){ int a,b; scanf("%d %d",&a,&b); printf("%d", a+b); return 0; }';
+store.code.dispatch("input");
+flush();
+store["problem-text"].value = "7-1 两个数的和\n输入两个整数，输出它们的和。";
+store["pta-feedback"].value = "测试点 2：答案错误";
+store.stdin.value = "3 4\n";
+store.expected.value = "7\n";
+const prompt = sandbox.PTAPrompt.build({
+  code: store.code.value,
+  problem: store["problem-text"].value,
+  feedback: store["pta-feedback"].value,
+  stdin: store.stdin.value,
+  expected: store.expected.value,
+  findings: sandbox.PTAAnalyzer.analyze(store.code.value).findings,
+  run: { summary: "输出与题目要求的输出不一致，第一个不同的地方在第 2 行。", stdout: "7\n" }
+});
+check("提示词含题目原文", prompt.indexOf("两个数的和") >= 0);
+check("提示词含 PTA 批改提示", prompt.indexOf("测试点 2：答案错误") >= 0);
+check("提示词含代码块", prompt.indexOf("```c") >= 0 && prompt.indexOf("scanf") >= 0);
+check("提示词含样例输入与期望输出", prompt.indexOf("3 4") >= 0 && prompt.indexOf("【题目要求的输出】") >= 0);
+check("提示词含运行小结", prompt.indexOf("第一个不同的地方在第 2 行") >= 0);
+const badFindings = sandbox.PTAAnalyzer.analyze('#include <stdio.h>\nint main(){ int a; scanf("%d", a); return 0; }').findings;
+check("提示词会带上静态检查结论", /本机静态检查工具列出的可疑点/.test(sandbox.PTAPrompt.build({ code: "x", findings: badFindings })) && badFindings.length > 0);
+check("题目为空时给出占位提示", sandbox.PTAPrompt.build({ code: "int main(){}" }).indexOf("（未填写") >= 0);
+store["btn-copy-prompt"].dispatch("click");
+check("点「复制提示词」不会崩", typeof store["copy-status"].textContent === "string" && store["copy-status"].textContent.length > 0, store["copy-status"].textContent);
 
 console.log("\n集成测试：" + ok + " 通过 / " + (ok + bad) + " 项");
 if (bad) process.exitCode = 1;

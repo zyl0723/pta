@@ -83,6 +83,71 @@
     $("chk-strict").addEventListener("change", function () {
       if (state.lastRun) renderRunResult(state.lastRun);
     });
+    $("btn-copy-prompt").addEventListener("click", copyPrompt);
+  }
+
+  /* ---------- 把上下文整理成一段提示词，方便粘给 AI ---------- */
+  function buildRunSummary() {
+    if (!state.lastRun) return null;
+    var result = state.lastRun.result;
+    var expected = state.lastRun.expected;
+    var summary;
+    if (!result.ok) {
+      var e = result.error || {};
+      summary = "程序没能跑完：" + (e.title || "运行失败") + (e.line ? "（第 " + e.line + " 行）" : "") + "。";
+    } else {
+      summary = "程序正常运行结束，用时 " + result.elapsed + " 毫秒。";
+      if (String(expected).replace(/\s+$/, "") !== "") {
+        var strict = $("chk-strict").checked;
+        var cmp = runner.compareOutput(result.stdout, expected, { keepLineTrailing: strict, keepTrailingBlank: strict });
+        summary += cmp.match
+          ? (cmp.whitespaceOnly ? "输出与期望基本一致（只有行尾空白或末尾换行的差异）。" : "输出与题目要求的输出完全一致。")
+          : "输出与题目要求的输出不一致，第一个不同的地方在第 " + (cmp.firstDiff + 1) + " 行。";
+      }
+    }
+    return { summary: summary, stdout: result.stdout };
+  }
+
+  function copyPrompt() {
+    var status = $("copy-status");
+    var text = window.PTAPrompt.build({
+      code: $("code").value,
+      problem: $("problem-text").value,
+      feedback: $("pta-feedback").value,
+      stdin: $("stdin").value,
+      expected: $("expected").value,
+      findings: state.findings,
+      run: buildRunSummary()
+    });
+    function done(ok, msg) {
+      status.textContent = msg;
+      status.className = ok ? "dim ok-text" : "dim";
+    }
+    if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        done(true, "已复制，去粘给你的 AI 助手吧");
+      }, function () {
+        copyFallback(text, done);
+      });
+    } else {
+      copyFallback(text, done);
+    }
+  }
+
+  function copyFallback(text, done) {
+    try {
+      if (!document.body || typeof document.execCommand !== "function") throw new Error("no execCommand");
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "readonly");
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      done(ok, ok ? "已复制，去粘给你的 AI 助手吧" : "复制失败，请手动选中复制");
+    } catch (err) {
+      done(false, "复制失败，请手动选中复制");
+    }
   }
 
   function insertAtCursor(el, text) {

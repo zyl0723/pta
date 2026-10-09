@@ -88,6 +88,32 @@
       <div id="summary" class="summary"></div>
       <div id="findings" class="findings"></div>
     </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>题目与提交反馈</h2>
+        <div class="panel-actions"><span class="dim">选填，填了更容易定位问题</span></div>
+      </div>
+
+      <label class="field">
+        <span>题目：把 PTA 上的习题描述整段粘进来</span>
+        <textarea id="problem-text" spellcheck="false" placeholder="例如：&#10;7-1 两个数的和&#10;输入格式：输入在一行中给出两个整数 a 和 b。&#10;输出格式：在一行中输出 a + b 的值。&#10;输入样例：3 4&#10;输出样例：7"></textarea>
+      </label>
+
+      <label class="field">
+        <span>应用修改：把 PTA 提交后给出的批改提示原文粘进来</span>
+        <textarea id="pta-feedback" spellcheck="false" placeholder="例如：&#10;测试点 2　答案错误&#10;测试点 3　格式错误"></textarea>
+      </label>
+
+      <div class="field-note">
+        <b>「应用修改」是什么？</b>就是 PTA 在你提交作业之后给出的批改提示，它只负责指出<b>你的问题是什么</b>——比如「答案错误」「格式错误」「段错误」「运行超时」「测试点 3 未通过」。它不会告诉你为什么错、怎么改，新手看不懂很正常：把那段提示原样抄进上面的框就行。这个框的作用只是把 PTA 指出的问题记下来，好和下面的检查结果对着看。
+      </div>
+
+      <div class="run-actions">
+        <button id="btn-copy-prompt" class="btn tiny">复制成一段给 AI 的提示词</button>
+        <span id="copy-status" class="dim"></span>
+      </div>
+    </div>
   </section>
 
 </main>
@@ -221,6 +247,7 @@ printf("%d", a);</pre>
 <script src="assets/js/analyzer.js"></script>
 <script src="assets/js/runner.js"></script>
 <script src="assets/js/problems.js"></script>
+<script src="assets/js/prompt.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
 </html>

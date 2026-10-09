@@ -178,6 +178,15 @@ pre.stdout {
 .verdict.bad { background: var(--error-soft); color: #a53434; border: 1px solid #f3cccc; }
 .compare-note { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
 
+/* ---------- 题目 / 提交反馈面板 ---------- */
+.field-note {
+  font-size: 12.5px; line-height: 1.75; color: var(--muted);
+  background: #f7f9ff; border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: 8px; padding: 9px 12px; margin-top: 10px;
+}
+.field-note b { color: var(--text); font-weight: 650; }
+.ok-text { color: #16704a; }
+
 .diff { border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
 .d-row { display: grid; grid-template-columns: 34px 60px 1fr 1fr; gap: 8px; align-items: start; padding: 6px 10px; border-bottom: 1px solid var(--line); font: 400 12.5px/18px var(--mono); }
 .d-row:last-child { border-bottom: 0; }
