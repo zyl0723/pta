@@ -4,7 +4,7 @@
 
 一个纯前端网页工具，用来检查 PTA 平台上 C 语言基础题的代码。粘贴代码后，它会**直白地指出问题出在哪一行、为什么错、怎么改**，并且能**真的把代码跑起来**，把运行结果和题目要求的输出逐行对比。
 
-> 在线使用：<https://zyl0723.github.io/pta/>
+> **在线使用（点开即用）：<https://zyl0723.github.io/pta/>** ｜ 源码仓库：<https://github.com/zyl0723/pta>
 
 - 面向人群：初学 C 语言、在 PTA 上做题的学生。
 - 设计底线：**准确优先于覆盖面**。只报有把握的问题，每条结论都同时给出「为什么」和「怎么改」；遇到无法确定的情况，明说无法确定，绝不编造结论误导学生。
@@ -208,4 +208,21 @@ tools/                  构建脚本、补丁、测试
 - 自有代码：页面（`index.html`、`assets/css/`、`assets/js/app.js`）、静态检查规则引擎（`assets/js/analyzer.js`）、运行与输出对比（`assets/js/runner.js`）、题库（`assets/js/problems.js`）、提示词拼装（`assets/js/prompt.js`）、自带 API Key 的对话客户端（`assets/js/aiclient.js`）、猫咪图标（`assets/img/logo-cat.svg`，作者手绘的 SVG）、构建脚本与解释器补丁（`tools/`）、测试与文档，均由作者编写。
 - 第三方只有一类：**随产物分发**的（JSCPP 等，见 THIRD-PARTY-NOTICES.md 第二节，已附许可全文与修改声明）。进站提示弹窗、页面样式、API 客户端都是作者手写的原生 HTML/CSS/JS，没有引入任何第三方 UI 库或 SDK。
 - 自有代码目前未声明开源许可，保留所有权利。
-- 第三方组件随 `assets/vendor/jscpp.js` 分发（JSCPP 2.0.9、lodash 4.18.1、pegjs-util 1.4.21、printf 0.6.1、PEG.js 0.9.0，均为 MIT），版权归各自作者所有，许可全文见 THIRD-PARTY-NOTICES.md。
+
+### 第三方署名清单（一个不落）
+
+仓库里唯一包含第三方代码的文件是 `assets/vendor/jscpp.js`（由 `npm run build:engine` 生成的构建产物）。它打包了下面这些组件，**全部是 MIT 许可**——MIT 明确允许任何人使用、修改、再分发，条件只是「保留版权声明与许可全文」，本仓库已满足该条件：
+
+| 组件 | 版本 | 版权归属 | 用途 |
+| --- | --- | --- | --- |
+| JSCPP | 2.0.9 | Copyright (c) 2015 Felix Hao | C 语言解释器主体 |
+| lodash | 4.18.1 | Copyright OpenJS Foundation and other contributors；基于 Underscore.js（Copyright Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors） | JSCPP 的运行时依赖 |
+| pegjs-util | 1.4.21 | Dr. Ralf S. Engelschall | JSCPP 解析 C 源码时的辅助库 |
+| printf | 0.6.1 | Copyright (c) 2008 Adaltas | JSCPP 的 printf 实现 |
+| PEG.js | 0.9.0（仅作生成器） | Copyright (c) 2010-2016 David Majda | JSCPP 的「C 语法 / 预处理」解析器由它生成，生成代码随 JSCPP 一起打包 |
+
+- 每个组件的**完整许可全文与版权行**见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) 第四节。
+- 对 JSCPP 的修改（scanf 读取修复、`EOF` 取值、printf 类型映射等）已按 MIT 要求在 THIRD-PARTY-NOTICES.md 第二节明确声明。
+- 只在构建阶段使用、**不随产物分发**的依赖：esbuild 0.28.2（MIT, Copyright (c) 2020 Evan Wallace）。
+- 清单可自行复现核对：跑 `npm run build:engine`，会打印「打包进产物的第三方包」。
+- 本仓库没有使用任何来源不明或无许可证的代码；没有把 PTA 的题目原文、题目数据或他人题解打包进来。
