@@ -89,7 +89,7 @@
       <div id="findings" class="findings"></div>
     </div>
 
-    <div class="panel">
+    <div class="panel subject">
       <div class="panel-head">
         <h2>题目与提交反馈</h2>
         <div class="panel-actions"><span class="dim">选填，填了更容易定位问题</span></div>
@@ -109,10 +109,6 @@
         <b>「应用修改」是什么？</b>就是 PTA 在你提交作业之后给出的批改提示，它只负责指出<b>你的问题是什么</b>——比如「答案错误」「格式错误」「段错误」「运行超时」「测试点 3 未通过」。它不会告诉你为什么错、怎么改，新手看不懂很正常：把那段提示原样抄进上面的框就行。这个框的作用只是把 PTA 指出的问题记下来，好和下面的检查结果对着看。
       </div>
 
-      <div class="run-actions">
-        <button id="btn-copy-prompt" class="btn tiny">复制成一段给 AI 的提示词</button>
-        <span id="copy-status" class="dim"></span>
-      </div>
     </div>
   </section>
 
@@ -247,7 +243,6 @@ printf("%d", a);</pre>
 <script src="assets/js/analyzer.js"></script>
 <script src="assets/js/runner.js"></script>
 <script src="assets/js/problems.js"></script>
-<script src="assets/js/prompt.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
 </html>

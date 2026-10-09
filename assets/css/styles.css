@@ -177,15 +177,23 @@ pre.stdout {
 .verdict.bad { background: var(--error-soft); color: #a53434; border: 1px solid #f3cccc; }
 .compare-note { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
 
-/* ---------- 题目 / 提交反馈面板 ---------- */
+/* ---------- 题目 / 提交反馈面板（灰粉色） ---------- */
+.panel.subject {
+  background: #f7eaef; border-color: #ecd3dd;
+  box-shadow: 0 1px 2px rgba(150, 92, 116, 0.07);
+}
+.panel.subject .panel-head h2 { color: #6d4152; }
+.panel.subject .panel-actions .dim { color: #9c7686; }
+.panel.subject .field { color: #7d5a68; }
+.panel.subject .field textarea { background: #fffdfe; border-color: #e7cbd7; }
+.panel.subject .field textarea:focus { border-color: #c98da8; box-shadow: 0 0 0 3px rgba(201, 141, 168, 0.16); }
 #problem-text, #pta-feedback { min-height: 116px; }
 .field-note {
-  font-size: 12.5px; line-height: 1.75; color: var(--muted);
-  background: #f7f9ff; border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  font-size: 12.5px; line-height: 1.75; color: #6f5560;
+  background: #fdf6f9; border: 1px solid #eed7e0; border-left: 3px solid #c98da8;
   border-radius: 8px; padding: 9px 12px; margin-top: 10px;
 }
-.field-note b { color: var(--text); font-weight: 650; }
-.ok-text { color: #16704a; }
+.field-note b { color: #5f3a49; font-weight: 650; }
 
 .diff { border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
 .d-row { display: grid; grid-template-columns: 34px 60px 1fr 1fr; gap: 8px; align-items: start; padding: 6px 10px; border-bottom: 1px solid var(--line); font: 400 12.5px/18px var(--mono); }
