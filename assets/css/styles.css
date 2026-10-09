@@ -47,7 +47,7 @@ code { font-family: var(--mono); font-size: 0.92em; background: #f4e4ea; padding
 .brand { display: flex; align-items: center; gap: 12px; }
 .logo {
   width: 38px; height: 38px; flex: none; display: grid; place-items: center;
-  background: linear-gradient(140deg, #ffd9e6, #f2a6c4); color: #fff;
+  background: linear-gradient(140deg, #f7d9e4, #e5c3d0); color: #fff;
   border-radius: 10px; font: 700 20px/1 var(--mono);
 }
 .logo img { width: 30px; height: 30px; display: block; }
