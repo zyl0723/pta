@@ -83,6 +83,7 @@ const result = await esbuild.build({
       "/*!",
       " * 本文件由 tools/build-jscpp.mjs 自动生成：内含第三方开源代码，并已针对本项目打补丁，请勿手工修改。",
       " * 第三方组件：JSCPP 2.0.9 (MIT, Copyright (c) 2015 Felix Hao)，及其依赖 lodash、pegjs-util、printf（均为 MIT）。",
+      " * JSCPP 里用于解析 C 语法/预处理指令的解析器由 PEG.js 0.9.0 生成（MIT, Copyright (c) 2010-2016 David Majda, http://pegjs.org/）。",
       " * 完整许可文本见仓库根目录 THIRD-PARTY-NOTICES.md。",
       " */",
     ].join("\n"),

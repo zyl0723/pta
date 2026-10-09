@@ -1,6 +1,6 @@
 # C 语言习题检查器
 
-> 作者：**zyl0723**（<https://github.com/zyl0723>）。本仓库自有代码版权归作者所有；用到的第三方组件（JSCPP 2.0.9、lodash 4.18.1、pegjs-util 1.4.21、printf 0.6.1，均为 MIT）许可见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
+> 作者：**zyl0723**（<https://github.com/zyl0723>）。本仓库自有代码版权归作者所有；用到的第三方组件（JSCPP 2.0.9、lodash 4.18.1、pegjs-util 1.4.21、printf 0.6.1、PEG.js 0.9.0，均为 MIT）许可见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
 
 一个纯前端网页工具，用来检查 PTA 平台上 C 语言基础题的代码。粘贴代码后，它会**直白地指出问题出在哪一行、为什么错、怎么改**，并且能**真的把代码跑起来**，把运行结果和题目要求的输出逐行对比。
 
@@ -208,4 +208,4 @@ tools/                  构建脚本、补丁、测试
 - 自有代码：页面（`index.html`、`assets/css/`、`assets/js/app.js`）、静态检查规则引擎（`assets/js/analyzer.js`）、运行与输出对比（`assets/js/runner.js`）、题库（`assets/js/problems.js`）、提示词拼装（`assets/js/prompt.js`）、自带 API Key 的对话客户端（`assets/js/aiclient.js`）、猫咪图标（`assets/img/logo-cat.svg`，作者手绘的 SVG）、构建脚本与解释器补丁（`tools/`）、测试与文档，均由作者编写。
 - 第三方只有一类：**随产物分发**的（JSCPP 等，见 THIRD-PARTY-NOTICES.md 第二节，已附许可全文与修改声明）。进站提示弹窗、页面样式、API 客户端都是作者手写的原生 HTML/CSS/JS，没有引入任何第三方 UI 库或 SDK。
 - 自有代码目前未声明开源许可，保留所有权利。
-- 第三方组件随 `assets/vendor/jscpp.js` 分发（JSCPP 2.0.9、lodash 4.18.1、pegjs-util 1.4.21、printf 0.6.1，均为 MIT），版权归各自作者所有，许可全文见 THIRD-PARTY-NOTICES.md。
+- 第三方组件随 `assets/vendor/jscpp.js` 分发（JSCPP 2.0.9、lodash 4.18.1、pegjs-util 1.4.21、printf 0.6.1、PEG.js 0.9.0，均为 MIT），版权归各自作者所有，许可全文见 THIRD-PARTY-NOTICES.md。

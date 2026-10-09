@@ -28,8 +28,11 @@
 | lodash | 4.18.1 | MIT | Copyright OpenJS Foundation and other contributors | JSCPP 的运行时依赖 |
 | pegjs-util | 1.4.21 | MIT | Dr. Ralf S. Engelschall（该包未随附 LICENSE 文件，以其 package.json 声明的 MIT 为准） | JSCPP 解析 C 源码时的辅助库 |
 | printf | 0.6.1 | MIT | Copyright (c) 2008 Adaltas | JSCPP 的 printf 实现 |
+| PEG.js | 0.9.0（生成器版本） | MIT | Copyright (c) 2010-2016 David Majda | JSCPP 用它生成「C 语法 / 预处理」解析器，生成出来的代码随 JSCPP 一起打包进产物（`pegjs` 本体只在生成阶段用，**没有**打包进产物） |
 
-上游地址：JSCPP <https://github.com/felixhao28/JSCPP>；lodash <https://github.com/lodash/lodash>；pegjs-util <https://github.com/rse/pegjs-util>；printf <https://github.com/adaltas/node-printf>。
+上游地址：JSCPP <https://github.com/felixhao28/JSCPP>；lodash <https://github.com/lodash/lodash>；pegjs-util <https://github.com/rse/pegjs-util>；printf <https://github.com/adaltas/node-printf>；PEG.js <https://github.com/pegjs/pegjs>。
+
+清单可用 `npm run build:engine` 重跑核对：构建结束会打印「打包进产物的第三方包」，当前结果为 `JSCPP, lodash, pegjs-util, printf`（PEG.js 属于生成阶段的工具，不在该列表里，但其生成代码在产物中，因此一并署名）。
 
 仅用于构建、不随产物分发的开发依赖：esbuild 0.28.2（MIT，Copyright (c) 2020 Evan Wallace，<https://github.com/evanw/esbuild>）。
 
@@ -175,6 +178,33 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+### PEG.js 0.9.0
+
+JSCPP 里用来解析 C 语法和预处理指令的解析器（`lib/ast.js`、`lib/prepast.js` 等）由 PEG.js 0.9.0 生成，这些**生成代码**随 JSCPP 一起被打包进 `assets/vendor/jscpp.js`。上游：<https://github.com/pegjs/pegjs>。
+
+Copyright (c) 2010-2016 David Majda
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
 
 ## 五、自有代码的授权
 
