@@ -187,6 +187,7 @@ pre.stdout {
   border-radius: 8px; padding: 9px 12px; margin-top: 10px;
 }
 .field-note b { color: #5f3a49; font-weight: 650; }
+.field-note.mini { font-size: 11.5px; padding: 6px 10px; margin-top: 8px; border-left-width: 2px; color: #8a6272; }
 
 .diff { border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
 .d-row { display: grid; grid-template-columns: 34px 60px 1fr 1fr; gap: 8px; align-items: start; padding: 6px 10px; border-bottom: 1px solid var(--line); font: 400 12.5px/18px var(--mono); }
@@ -378,6 +379,10 @@ pre.stdout {
 
 /* ---------- 「API」模块 ---------- */
 .api-panel .panel-head { margin-bottom: 2px; }
+/* 挪到左栏后这一列变窄，输入框跟着宽度自适应，避免频繁换行 */
+.api-panel .url-input { flex: 1 1 200px; width: auto; max-width: 100%; }
+.api-panel .key-input { flex: 1 1 170px; width: auto; max-width: 100%; }
+.api-panel .model-input { flex: 1 1 150px; width: auto; max-width: 100%; }
 .api-get { margin: 12px 0 2px; font-size: 11.5px; color: var(--muted); }
 .api-link { color: #2563eb; font-size: 11.5px; text-decoration: underline; }
 .api-link:hover { color: #1d4ed8; }

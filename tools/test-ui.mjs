@@ -147,6 +147,8 @@ store["problem-text"].value = "7-1 两个数的和";
 store["pta-feedback"].value = "测试点 2：答案错误";
 check("两个框可以正常写入", store["problem-text"].value.indexOf("两个数的和") >= 0 && store["pta-feedback"].value.indexOf("答案错误") >= 0);
 check("新面板使用灰粉色主题", /class="panel subject"/.test(html));
+check("「应用修改」有翻译按钮与括号提示", /id="btn-translate"/.test(html) && /翻译成中文/.test(html) && /新手不了解系统报错/.test(html));
+check("练习与 API 模块已挪到左栏", /class="col col-left"[\s\S]*?class="panel practice"[\s\S]*?id="panel-api"[\s\S]*?<\/section>[\s\S]*?class="col col-right"/.test(html));
 
 console.log("=== 免登录：页面不再有账号系统 ===");
 check("页面里没有登录 / 注册弹窗", !/id="auth"/.test(html) && !/id="tab-register"/.test(html));
@@ -185,6 +187,22 @@ check("提示词要求逐行注释", /每一行末尾/.test(store["prompt-out"].
 check("提示词要求列出易错点", /容易出错的地方/.test(store["prompt-out"].value));
 check("提示词带上自动检查出的错误点", /scanf/.test(store["prompt-out"].value), store["prompt-out"].value.slice(0, 120));
 check("提示词带上 PTA 批改提示", store["prompt-out"].value.indexOf("答案错误") >= 0);
+
+console.log("=== 翻译报错（把 PTA 的提示翻成大白话） ===");
+alerts.length = 0;
+store["pta-feedback"].value = "";
+store["btn-translate"].dispatch("click");
+check("反馈为空时点翻译会先提醒粘提示", alerts.length > 0 && /批改提示/.test(alerts[0]), "alerts=" + alerts.length);
+
+store["pta-feedback"].value = "测试点 3　段错误（Segmentation Fault）";
+store["prompt-out"].value = "";
+store["btn-translate"].dispatch("click");
+check("点翻译会拼出翻译提示词", /翻译/.test(store["prompt-out"].value) && store["prompt-out"].value.indexOf("段错误") >= 0);
+check("翻译提示词要求点出哪里错、第几行、怎么改", /哪里错/.test(store["prompt-out"].value) && /第几行/.test(store["prompt-out"].value));
+check("翻译提示词把术语要求解释成大白话", /大白话/.test(store["prompt-out"].value));
+check("翻译后答案面板出现", !store["panel-ai"].classList.contains("hidden"));
+
+store["pta-feedback"].value = "测试点 2：答案错误";
 
 store["practice-count"].value = "3";
 store["chk-practice-answer"].checked = false;

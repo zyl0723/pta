@@ -79,45 +79,6 @@
       <div id="run-status" class="run-status">还没有运行过。</div>
       <div id="run-body" class="run-body"></div>
     </div>
-  </section>
-
-  <section class="col col-right">
-    <div class="panel">
-      <div class="panel-head">
-        <h2>检查结果</h2>
-        <div class="panel-actions"><span class="legend"><i class="dot sev-error"></i>错误<i class="dot sev-warn"></i>可疑<i class="dot sev-info"></i>建议</span></div>
-      </div>
-      <div id="summary" class="summary"></div>
-      <div id="findings" class="findings"></div>
-    </div>
-
-    <div class="panel subject">
-      <div class="panel-head">
-        <h2>题目与提交反馈</h2>
-        <div class="panel-actions"><span class="dim">选填，填了更容易定位问题</span></div>
-      </div>
-
-      <label class="field">
-        <span>题目：把 PTA 上的习题描述整段粘进来</span>
-        <textarea id="problem-text" spellcheck="false" placeholder="例如：&#10;7-1 两个数的和&#10;输入格式：输入在一行中给出两个整数 a 和 b。&#10;输出格式：在一行中输出 a + b 的值。"></textarea>
-      </label>
-
-      <div class="ai-row">
-        <span class="ai-label">答案与解析</span>
-        <button id="btn-answer" class="btn tiny primary">生成答案与解析</button>
-      </div>
-      <p class="ai-hint">粘好上面的题目后点这个按钮：页面会按<b>你的题目 + 你的代码 + 错误点</b>拼好一段提问。不用登录、不用注册，接下来二选一：<b>① 在本站生成</b>——先在下面「API」模块里填好自己的 API，再点「在本站生成」直接出结果；<b>② 复制提示词</b>——复制下来，粘到你自己的 AI 网站去问。<b>本站不提供 AI、不经手中转、也不替你付任何费用。</b></p>
-
-      <label class="field">
-        <span>应用修改：把 PTA 提交后给出的批改提示原文粘进来</span>
-        <textarea id="pta-feedback" spellcheck="false" placeholder="例如：&#10;测试点 2　答案错误&#10;测试点 3　格式错误"></textarea>
-      </label>
-
-      <div class="field-note">
-        <b>「应用修改」是什么？</b>就是 PTA 在你提交作业之后给出的批改提示，它只负责指出<b>你的问题是什么</b>——比如「答案错误」「格式错误」「段错误」「运行超时」「测试点 3 未通过」。它不会告诉你为什么错、怎么改，新手看不懂很正常：把那段提示原样抄进上面的框就行。这个框的作用只是把 PTA 指出的问题记下来，好和下面的检查结果对着看。
-      </div>
-
-    </div>
 
     <div class="panel practice">
       <div class="panel-head">
@@ -183,10 +144,57 @@
         <span class="dim">点了就忘掉这台浏览器里存过的 API 地址、密钥和模型。</span>
       </div>
     </div>
+  </section>
+
+  <section class="col col-right">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>检查结果</h2>
+        <div class="panel-actions"><span class="legend"><i class="dot sev-error"></i>错误<i class="dot sev-warn"></i>可疑<i class="dot sev-info"></i>建议</span></div>
+      </div>
+      <div id="summary" class="summary"></div>
+      <div id="findings" class="findings"></div>
+    </div>
+
+    <div class="panel subject">
+      <div class="panel-head">
+        <h2>题目与提交反馈</h2>
+        <div class="panel-actions"><span class="dim">选填，填了更容易定位问题</span></div>
+      </div>
+
+      <label class="field">
+        <span>题目：把 PTA 上的习题描述整段粘进来</span>
+        <textarea id="problem-text" spellcheck="false" placeholder="例如：&#10;7-1 两个数的和&#10;输入格式：输入在一行中给出两个整数 a 和 b。&#10;输出格式：在一行中输出 a + b 的值。"></textarea>
+      </label>
+
+      <div class="ai-row">
+        <span class="ai-label">答案与解析</span>
+        <button id="btn-answer" class="btn tiny primary">生成答案与解析</button>
+      </div>
+      <p class="ai-hint">粘好上面的题目后点这个按钮：页面会按<b>你的题目 + 你的代码 + 错误点</b>拼好一段提问。不用登录、不用注册，接下来二选一：<b>① 在本站生成</b>——先在左边「API」模块里填好自己的 API，再点「在本站生成」直接出结果；<b>② 复制提示词</b>——复制下来，粘到你自己的 AI 网站去问。<b>本站不提供 AI、不经手中转、也不替你付任何费用。</b></p>
+
+      <label class="field">
+        <span>应用修改：把 PTA 提交后给出的批改提示原文粘进来</span>
+        <textarea id="pta-feedback" spellcheck="false" placeholder="例如：&#10;测试点 2　答案错误&#10;测试点 3　格式错误"></textarea>
+      </label>
+
+      <div class="ai-row">
+        <span class="ai-label">翻译报错</span>
+        <button id="btn-translate" class="btn tiny primary">翻译成中文</button>
+      </div>
+      <p class="ai-hint">看不懂 PTA 给的报错就点这个按钮：页面会把上面「应用修改」里的原文（连你的代码和题目一起）交给<b>你自己的 AI</b>，让 AI 用最直白的中文告诉你<b>到底哪里错了、该改哪一行</b>。用法和「答案与解析」一样：配好 API 就点「在本站生成」，或者复制提示词去你的 AI 网站粘贴。</p>
+
+      <div class="field-note">
+        <b>「应用修改」是什么？</b>就是 PTA 在你提交作业之后给出的批改提示，它只负责指出<b>你的问题是什么</b>——比如「答案错误」「格式错误」「段错误」「运行超时」「测试点 3 未通过」。它不会告诉你为什么错、怎么改，新手看不懂很正常：把那段提示原样抄进上面的框就行。这个框的作用只是把 PTA 指出的问题记下来，好和下面的检查结果对着看。
+      </div>
+
+      <p class="field-note mini">（新手不了解系统报错？把 PTA 的提示粘进上面的框，点「翻译成中文」，让它一起翻译。）</p>
+
+    </div>
 
     <div id="panel-ai" class="panel ai-panel hidden">
       <div class="panel-head">
-        <h2>用 AI 出答案 / 出练习</h2>
+        <h2>用 AI 出答案 / 练习 / 翻报错</h2>
         <div class="panel-actions">
           <button id="btn-copy-prompt" class="btn tiny">复制提示词</button>
         </div>

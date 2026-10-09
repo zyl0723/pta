@@ -90,6 +90,7 @@
     });
 
     $("btn-answer").addEventListener("click", function () { showPrompt("answer"); });
+    $("btn-translate").addEventListener("click", function () { showPrompt("translate"); });
     $("btn-practice").addEventListener("click", function () { showPrompt("practice"); });
     $("btn-copy-prompt").addEventListener("click", function () {
       var box = $("prompt-out");
@@ -158,12 +159,27 @@
     return true;
   }
 
+  function needFeedback() {
+    var box = $("pta-feedback");
+    if (!box.value.trim()) {
+      alert("请先把 PTA 提交后给出的批改提示（「应用修改」那段原文）粘贴到框里，再点「翻译成中文」。");
+      box.focus();
+      return false;
+    }
+    return true;
+  }
+
   function setAiStatus(text) {
     $("ai-status").textContent = text;
   }
 
   function showPrompt(kind) {
-    if (!needProblem() || !window.PTAPrompt) return;
+    if (!window.PTAPrompt) return;
+    if (kind === "translate") {
+      if (!needFeedback()) return;
+    } else if (!needProblem()) {
+      return;
+    }
     var ctx = {
       problem: $("problem-text").value,
       code: $("code").value,
@@ -173,6 +189,8 @@
     var text;
     if (kind === "answer") {
       text = window.PTAPrompt.buildAnswer(ctx);
+    } else if (kind === "translate") {
+      text = window.PTAPrompt.buildTranslate(ctx);
     } else {
       ctx.count = parseInt($("practice-count").value, 10) || 3;
       ctx.withAnswer = $("chk-practice-answer").checked;

@@ -82,9 +82,35 @@
     ].join("\n");
   }
 
+  /* 翻译报错：把 PTA 的批改提示翻成大白话，直接点出哪里错了 */
+  function buildTranslate(ctx) {
+    var c = ctx || {};
+    return [
+      "你是一位特别会讲人话的 C 语言老师，正在帮一个刚学编程的新手。下面是我在 PTA（拼题 A）上提交作业后系统给我的批改提示原文，我基本看不懂。",
+      "",
+      "请把这段提示翻译成简单、直白的中文，直接告诉我到底哪里错了。",
+      "",
+      block("PTA 给我的批改提示原文", c.feedback),
+      "",
+      block("我写的代码", c.code),
+      "",
+      block("题目（可能为空）", c.problem),
+      "",
+      block("工具自动检查出来的问题", findingsToText(c.findings)),
+      "",
+      "【输出要求，请严格遵守】",
+      "1. 先用一句话说清「这道题到底错在哪」；不要直接甩术语，像「段错误」「运行超时」这种词要顺手解释成大白话。",
+      "2. 再逐条翻译 PTA 的提示：每条写清「它说的是什么意思」「对应我哪里出的问题」「我该怎么改」。",
+      "3. 提示里出现测试点、行号、错误类型，就逐条对应说明；没有就跳过，不要编。",
+      "4. 如果能直接改好，就指出要改我代码的第几行、改成什么样子。",
+      "5. 全文用中文，语气像学长带学弟，短句、直白，不要长篇大论。"
+    ].join("\n");
+  }
+
   window.PTAPrompt = {
     buildAnswer: buildAnswer,
     buildPractice: buildPractice,
+    buildTranslate: buildTranslate,
     findingsToText: findingsToText
   };
 })();
