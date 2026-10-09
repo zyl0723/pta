@@ -5,6 +5,9 @@ node_modules/
 .scratch/
 *.log
 
+# 分享包（本地生成，不进仓库）
+pta-checker-share.zip
+
 # 编辑器 / 系统
 .DS_Store
 Thumbs.db

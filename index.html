@@ -109,6 +109,7 @@
           <option value="kimi">Kimi</option>
           <option value="doubao">豆包</option>
           <option value="tongyi">通义</option>
+          <option value="local">本地 AI（Ollama）</option>
         </select>
         <button id="btn-answer" class="btn tiny primary">生成答案与解析</button>
       </div>
@@ -149,14 +150,29 @@
 
     <div id="panel-ai" class="panel ai-panel hidden">
       <div class="panel-head">
-        <h2>发给 AI 的提示词</h2>
+        <h2>提示词与 AI 回答</h2>
         <div class="panel-actions">
-          <span id="ai-status" class="dim">还没有生成。</span>
-          <button id="btn-copy-prompt" class="btn tiny">再复制一次</button>
+          <button id="btn-copy-prompt" class="btn tiny">复制提示词</button>
         </div>
       </div>
-      <p class="ai-hint">下面这段就是发给 AI 的内容，已经自动复制过。去刚打开的页面按 Ctrl + V 粘贴发送即可；如果没复制成功，就手动全选这段文字复制。</p>
+      <div id="ai-status" class="ai-status">还没有生成。</div>
+
+      <div id="local-ai-box" class="ai-row hidden">
+        <span class="ai-label">本机 AI 地址</span>
+        <input id="ai-endpoint" class="select select-tiny ai-input" value="http://127.0.0.1:11434" spellcheck="false">
+        <span class="ai-label">模型</span>
+        <input id="ai-model" class="select select-tiny ai-input" value="qwen2.5:7b" spellcheck="false">
+        <button id="btn-local-check" class="btn tiny">检测连接</button>
+        <button id="btn-local-stop" class="btn tiny">停止</button>
+      </div>
+
+      <p class="ai-hint" id="ai-hint">下面这段就是发给 AI 的内容，已经自动复制过。去刚打开的页面按 Ctrl + V 粘贴发送即可；如果没复制成功，就手动全选这段文字复制。</p>
       <textarea id="prompt-out" class="prompt-out" readonly spellcheck="false"></textarea>
+
+      <div id="ai-answer-wrap" class="hidden">
+        <div class="block-title">AI 的回答（由你本机的 Ollama 生成）</div>
+        <textarea id="ai-answer" class="prompt-out" readonly spellcheck="false"></textarea>
+      </div>
     </div>
   </section>
 
@@ -291,6 +307,7 @@ printf("%d", a);</pre>
 <script src="assets/js/analyzer.js"></script>
 <script src="assets/js/runner.js"></script>
 <script src="assets/js/problems.js"></script>
+<script src="assets/js/localai.js"></script>
 <script src="assets/js/prompt.js"></script>
 <script src="assets/js/app.js"></script>
 </body>

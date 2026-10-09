@@ -53,7 +53,7 @@ sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 
-for (const f of ["assets/vendor/jscpp.js", "assets/js/analyzer.js", "assets/js/runner.js", "assets/js/problems.js", "assets/js/prompt.js", "assets/js/app.js"]) {
+for (const f of ["assets/vendor/jscpp.js", "assets/js/analyzer.js", "assets/js/runner.js", "assets/js/problems.js", "assets/js/localai.js", "assets/js/prompt.js", "assets/js/app.js"]) {
   vm.runInContext(readFileSync(path.join(root, f), "utf8"), sandbox, { filename: f });
 }
 function flush() { while (timers.length) timers.shift()(); }
@@ -152,6 +152,19 @@ check("练习提示词含出题数量", store["prompt-out"].value.indexOf("5 道
 check("练习提示词要求先不给答案", /不要给答案/.test(store["prompt-out"].value));
 check("练习提示词要求同题型换数据", /题型相同/.test(store["prompt-out"].value));
 check("练习提示词带上错误点", /我在这道题上犯过的错误|PTA 提交后的批改提示/.test(store["prompt-out"].value));
+
+console.log("=== 本机 AI（Ollama）模式 ===");
+check("AI 下拉里有本地 AI 选项", /value="local"/.test(html) && html.indexOf("assets/js/localai.js") >= 0);
+store["ai-target"].value = "local";
+store["ai-target"].dispatch("change");
+check("选本地 AI 后出现本机地址/模型设置", !store["local-ai-box"].classList.contains("hidden"));
+store["problem-text"].value = "7-1 两数求和\n输入 a 和 b，输出 a + b。";
+store["btn-answer"].dispatch("click");
+check("本地模式：AI 回答区出现", !store["ai-answer-wrap"].classList.contains("hidden"));
+check("本地模式：连不上时给出可照做的指引", /Ollama|ollama|浏览器/.test(store["ai-status"].textContent), store["ai-status"].textContent);
+store["ai-target"].value = "chatgpt";
+store["ai-target"].dispatch("change");
+check("切回网站模式后本机设置收起", store["local-ai-box"].classList.contains("hidden"));
 
 console.log("=== 布局回归：错误列表不能盖住下方面板 ===");
 const css = readFileSync(path.join(root, "assets/css/styles.css"), "utf8");

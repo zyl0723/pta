@@ -36,11 +36,22 @@
 
 ## 「答案与解析」和「练习」怎么工作
 
-先说清楚：这两个按钮**不会**让网页自己去搜答案、也不会自己生成内容。这个工具是纯静态页面，**不联网、不含 AI、没有服务器**。它们做的事是：
+这两个按钮**不会**让网页自己去搜答案。这个工具本身是纯静态页面：**没有服务器、不联网、不含 AI**。它做的只是把材料整理成一段高质量的提问文本，再交给你选择的「答题方」：
 
-1. 把你粘进来的**题目**、编辑器里的**代码**、「应用修改」里的**批改提示**，以及静态检查发现的**错误点**，拼成一段结构化的提问文本；
-2. 把这段文本**复制到剪贴板**，并打开你选的 AI 网站（ChatGPT / DeepSeek / Kimi / 豆包 / 通义）；
-3. 你在那边按 `Ctrl + V` 粘贴发送，由**你自己的 AI 账号**给出结果（页面下方会把这段提示词也显示出来，方便手动复制）。
+- **方式 A（默认，任何浏览器都能用）**：把提示词**复制到剪贴板**，同时打开你选的 AI 网站（ChatGPT / DeepSeek / Kimi / 豆包 / 通义），你在那边按 `Ctrl + V` 粘贴发送。用的是**你自己的 AI 账号**。
+- **方式 B（本机 AI：开源、免费、不用密钥）**：把下拉框选成「本地 AI（Ollama）」，提示词会直接发给你电脑上运行的 [Ollama](https://github.com/ollama/ollama)，回答流式显示在页面里。需要先安装：
+
+  ```bash
+  # 1) 到 https://ollama.com 下载安装 Ollama
+  # 2) 下载一个中文能力较好的模型
+  ollama pull qwen2.5:7b
+  # 3) Windows：设置环境变量后重启 Ollama，否则浏览器会被 CORS 拦住
+  set OLLAMA_ORIGINS=*
+  ```
+
+  **GitHub Pages 上的 https 页面用不了方式 B**（浏览器禁止 https 页面访问本机服务）。请把项目下载到本地、双击 `index.html` 打开，或 `npm run serve` 后用 `http://localhost:5173` 访问；页面会自动检测并给出提示。
+
+拼好的提示词会显示在页面下方的「提示词与 AI 回答」面板里，任何时候都能手动复制。
 
 - **答案与解析**：要求 AI 给出完整代码，且**每一行末尾都带注释**说明为什么这么写；代码之后另附「容易出错的地方」，最后点评你的代码错在哪、怎么改。
 - **练习**：要求 AI 依据原题和你这次的错误点，出若干道「题型相同、数据不同」的新题。默认**先只给题目不给答案**，你做完再发回去让 AI 批改，用来巩固这类题型。
@@ -117,13 +128,14 @@ npm run build:engine # 重新生成 assets/vendor/jscpp.js
 npm test
 ```
 
-包含四组校验：
+包含以下校验：
 
 - `tools/verify-problems.mjs`：题库参考实现零误报 + 样例输出全对。
 - `tools/test-analyzer.mjs`：16 个正确程序不得误报。
 - `tools/test-analyzer2.mjs`：21 个错误必须命中 + 10 个正确写法不得误报。
 - `tools/test-ui.mjs`：DOM 集成测试（初始化、检查、运行、对比、报错翻译、语法错误行号）。
 - `tools/conformance.mjs`：运行引擎对基础语法/标准库的行为一致性测试。
+- `tools/test-localai.mjs`：把提示词发给一个「假 Ollama 服务」，校验请求格式、流式解析、模型不存在与服务未启动时的错误提示。
 
 ## 目录结构
 
@@ -133,6 +145,8 @@ assets/css/styles.css   样式
 assets/js/analyzer.js   静态检查引擎（规则）
 assets/js/runner.js     运行 + 输出对比 + 报错翻译
 assets/js/problems.js   基础题型样例与参考实现
+assets/js/prompt.js     提示词拼装（答案与解析 / 练习）
+assets/js/localai.js    本机 AI（Ollama）HTTP 客户端
 assets/js/app.js        页面交互
 assets/vendor/jscpp.js  打包后的 C 解释器（含补丁）
 tools/                  构建脚本、补丁、测试
@@ -153,6 +167,7 @@ tools/                  构建脚本、补丁、测试
 ## 作者与许可
 
 - 作者：**zyl0723**（<https://github.com/zyl0723>）。
-- 自有代码：页面（`index.html`、`assets/css/`、`assets/js/app.js`）、静态检查规则引擎（`assets/js/analyzer.js`）、运行与输出对比（`assets/js/runner.js`）、题库（`assets/js/problems.js`）、猫咪图标（`assets/img/logo-cat.svg`，作者手绘的 SVG）、构建脚本与解释器补丁（`tools/`）、测试与文档，均由作者编写。
+- 自有代码：页面（`index.html`、`assets/css/`、`assets/js/app.js`）、静态检查规则引擎（`assets/js/analyzer.js`）、运行与输出对比（`assets/js/runner.js`）、题库（`assets/js/problems.js`）、提示词拼装与本机 AI 客户端（`assets/js/prompt.js`、`assets/js/localai.js`）、猫咪图标（`assets/img/logo-cat.svg`，作者手绘的 SVG）、构建脚本与解释器补丁（`tools/`）、测试与文档，均由作者编写。
+- 第三方分两类：**随产物分发**的（JSCPP 等，见 THIRD-PARTY-NOTICES.md 第二节，已附许可全文）与**只通过公开接口调用、不随仓库分发**的（Ollama，见第三节）。两类都不存在把他人代码当自有代码使用的情况；本项目也不含任何来源不明的题解数据。
 - 自有代码目前未声明开源许可，保留所有权利。
 - 第三方组件随 `assets/vendor/jscpp.js` 分发（JSCPP 2.0.9、lodash 4.18.1、pegjs-util 1.4.21、printf 0.6.1，均为 MIT），版权归各自作者所有，许可全文见 THIRD-PARTY-NOTICES.md。

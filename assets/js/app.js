@@ -17,8 +17,12 @@
     deepseek: { label: "DeepSeek", url: "https://chat.deepseek.com/" },
     kimi: { label: "Kimi", url: "https://www.kimi.com/" },
     doubao: { label: "豆包", url: "https://www.doubao.com/chat/" },
-    tongyi: { label: "通义", url: "https://www.tongyi.com/" }
+    tongyi: { label: "通义", url: "https://www.tongyi.com/" },
+    local: { label: "本机 AI（Ollama）", local: true }
   };
+
+  var HINT_WEB = "下面这段就是发给 AI 的内容，已经自动复制过。去刚打开的页面按 Ctrl + V 粘贴发送即可；如果没复制成功，就手动全选这段文字复制。";
+  var HINT_LOCAL = "下面这段会直接发给你本机运行的 Ollama（开源、免费、不用密钥），回答会流式出现在下方。先去 ollama.com 装好 Ollama，再执行 ollama pull qwen2.5:7b 下载模型。";
 
   var SEV = {
     error: { label: "错误", cls: "sev-error", mark: "✖", hint: "这样写编译器一定会报错" },
@@ -95,6 +99,12 @@
 
     $("btn-answer").addEventListener("click", function () { showPrompt("answer"); });
     $("btn-practice").addEventListener("click", function () { showPrompt("practice"); });
+    $("ai-target").addEventListener("change", toggleLocalBox);
+    $("btn-local-check").addEventListener("click", checkLocalAI);
+    $("btn-local-stop").addEventListener("click", function () {
+      if (state.localRun) state.localRun.cancel();
+      setAiStatus("已停止。");
+    });
     $("btn-copy-prompt").addEventListener("click", function () {
       var box = $("prompt-out");
       if (!box.value) return;
@@ -139,13 +149,68 @@
     var target = AI_TARGETS[$("ai-target").value] || AI_TARGETS.chatgpt;
     $("prompt-out").value = text;
     $("panel-ai").classList.remove("hidden");
-    copyText(text, function (ok) {
-      setAiStatus(ok
-        ? "提示词已复制，去 " + target.label + " 按 Ctrl + V 粘贴发送"
-        : "复制失败：请手动全选下面的提示词复制");
-    });
-    openTarget(target, text);
+    if (target.local) {
+      showLocal(text);
+    } else {
+      $("ai-answer-wrap").classList.add("hidden");
+      $("ai-hint").textContent = HINT_WEB;
+      copyText(text, function (ok) {
+        setAiStatus(ok
+          ? "提示词已复制，去 " + target.label + " 按 Ctrl + V 粘贴发送"
+          : "复制失败：请手动全选下面的提示词复制");
+      });
+      openTarget(target, text);
+    }
     $("panel-ai").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  /* ---------- 本机 AI（Ollama）：把提示词直接发给本机的开源模型 ---------- */
+  function isHttpsPage() {
+    return (typeof location !== "undefined" && location.protocol === "https:");
+  }
+
+  function toggleLocalBox() {
+    var target = AI_TARGETS[$("ai-target").value] || AI_TARGETS.chatgpt;
+    $("local-ai-box").classList[target.local ? "remove" : "add"]("hidden");
+  }
+
+  function checkLocalAI() {
+    if (!window.PTALocalAI) { setAiStatus("页面缺少本地 AI 模块。"); return; }
+    if (isHttpsPage()) {
+      setAiStatus("当前是 https 网页，浏览器禁止它访问本机服务：请把项目下载到本地、双击 index.html 打开，或 npm run serve 后在 http://localhost:5173 使用。");
+      return;
+    }
+    setAiStatus("正在检测本机 AI…");
+    window.PTALocalAI.listModels($("ai-endpoint").value, 4000).then(function (models) {
+      if (!models.length) { setAiStatus("连上了 Ollama，但一个模型都没有：先执行 ollama pull qwen2.5:7b。"); return; }
+      setAiStatus("连接正常，本机已有模型：" + models.join("、"));
+      if (models.indexOf($("ai-model").value.trim()) < 0) $("ai-model").value = models[0];
+    }, function (err) {
+      setAiStatus(window.PTALocalAI.explain(err));
+    });
+  }
+
+  function showLocal(text) {
+    $("local-ai-box").classList.remove("hidden");
+    $("ai-answer-wrap").classList.remove("hidden");
+    $("ai-hint").textContent = HINT_LOCAL;
+    var out = $("ai-answer");
+    out.value = "";
+    if (!window.PTALocalAI) { setAiStatus("页面缺少本地 AI 模块。"); return; }
+    if (isHttpsPage()) {
+      setAiStatus("当前是 https 网页，浏览器禁止它访问本机服务：请把项目下载到本地、双击 index.html 打开，或 npm run serve 后在 http://localhost:5173 使用；也可以把上面的 AI 网站换成别家，用复制提示词的方式。");
+      return;
+    }
+    var model = $("ai-model").value.trim() || window.PTALocalAI.DEFAULT_MODEL;
+    setAiStatus("正在请求本机 AI（" + model + "）…");
+    state.localRun = window.PTALocalAI.chat({
+      endpoint: $("ai-endpoint").value,
+      model: model,
+      prompt: text,
+      onDelta: function (d, all) { out.value = all; out.scrollTop = out.scrollHeight; },
+      onDone: function () { setAiStatus("本机 AI 已生成完毕（模型：" + model + "）。"); },
+      onError: function (err) { setAiStatus(window.PTALocalAI.explain(err)); }
+    });
   }
 
   function openTarget(target, text) {

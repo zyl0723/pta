@@ -10,7 +10,8 @@
     "verify:engine": "node tools/conformance.mjs",
     "verify:problems": "node tools/verify-problems.mjs",
     "verify:ui": "node tools/test-ui.mjs",
-    "test": "npm run verify:analyzer && npm run verify:engine && npm run verify:problems && npm run verify:ui"
+    "verify:localai": "node tools/test-localai.mjs",
+    "test": "npm run verify:analyzer && npm run verify:engine && npm run verify:problems && npm run verify:localai && npm run verify:ui"
   },
   "dependencies": {
     "JSCPP": "^2.0.9"
