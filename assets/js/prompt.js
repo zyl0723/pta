@@ -58,7 +58,9 @@
   /* 练习：按题目和错误点出相似题 */
   function buildPractice(ctx) {
     var c = ctx || {};
-    var n = parseInt(c.count, 10) || 5;
+    var n = parseInt(c.count, 10) || 3;
+    if (n < 1) n = 1;
+    if (n > 3) n = 3;
     var answerRule = c.withAnswer
       ? "每道题后面直接附上参考答案（C 代码 + 一句解题提示）。"
       : "先只给题目和样例，不要给答案；等我把代码发给你，你再逐题批改。";

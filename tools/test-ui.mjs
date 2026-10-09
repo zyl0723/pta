@@ -25,7 +25,7 @@ function El(id) {
     dispatch(type, ev) { (this._handlers[type] || []).forEach(fn => fn(ev || {})); },
     querySelectorAll() { return []; },
     getAttribute() { return null; }, setAttribute() {},
-    focus() {}, setSelectionRange() {}, scrollIntoView() {}
+    focus() {}, select() {}, setSelectionRange() {}, scrollIntoView() {}
   };
 }
 const store = {};
@@ -36,7 +36,9 @@ const document = {
   getElementById: (id) => store[id] || (store[id] = El(id)),
   addEventListener() {},
   querySelectorAll() { return []; },
-  createElement: () => El("tmp")
+  createElement: () => El("tmp"),
+  execCommand: () => true,
+  body: { appendChild() {}, removeChild() {} }
 };
 
 const alerts = [];
@@ -53,7 +55,7 @@ sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 
-for (const f of ["assets/vendor/jscpp.js", "assets/js/analyzer.js", "assets/js/runner.js", "assets/js/problems.js", "assets/js/localai.js", "assets/js/prompt.js", "assets/js/app.js"]) {
+for (const f of ["assets/vendor/jscpp.js", "assets/js/analyzer.js", "assets/js/runner.js", "assets/js/problems.js", "assets/js/prompt.js", "assets/js/app.js"]) {
   vm.runInContext(readFileSync(path.join(root, f), "utf8"), sandbox, { filename: f });
 }
 function flush() { while (timers.length) timers.shift()(); }
@@ -145,26 +147,29 @@ check("提示词要求列出易错点", /容易出错的地方/.test(store["prom
 check("提示词带上自动检查出的错误点", /scanf/.test(store["prompt-out"].value), store["prompt-out"].value.slice(0, 120));
 check("提示词带上 PTA 批改提示", store["prompt-out"].value.indexOf("答案错误") >= 0);
 
-store["practice-count"].value = "5";
+store["practice-count"].value = "3";
 store["chk-practice-answer"].checked = false;
 store["btn-practice"].dispatch("click");
-check("练习提示词含出题数量", store["prompt-out"].value.indexOf("5 道") >= 0);
+check("练习提示词含出题数量", store["prompt-out"].value.indexOf("3 道") >= 0);
 check("练习提示词要求先不给答案", /不要给答案/.test(store["prompt-out"].value));
 check("练习提示词要求同题型换数据", /题型相同/.test(store["prompt-out"].value));
 check("练习提示词带上错误点", /我在这道题上犯过的错误|PTA 提交后的批改提示/.test(store["prompt-out"].value));
 
-console.log("=== 本机 AI（Ollama）模式 ===");
-check("AI 下拉里有本地 AI 选项", /value="local"/.test(html) && html.indexOf("assets/js/localai.js") >= 0);
-store["ai-target"].value = "local";
-store["ai-target"].dispatch("change");
-check("选本地 AI 后出现本机地址/模型设置", !store["local-ai-box"].classList.contains("hidden"));
+console.log("=== 练习出题数量：1-3 道自选 ===");
+const countOpts = [...html.matchAll(/<option value="(\d)"[^>]*>\d 题<\/option>/g)].map((m) => m[1]);
+check("出题数量只有 1 / 2 / 3 三档", countOpts.join(",") === "1,2,3", countOpts.join(","));
+check("默认选中 3 题", /<option value="3" selected>3 题<\/option>/.test(html));
+check("练习提示词把数量写进要求", /仿照出 3 道/.test(store["prompt-out"].value));
+
+console.log("=== 不内置任何 AI 接入（页面不产生任何服务端费用） ===");
+check("AI 下拉里没有“本地 AI / Ollama”选项", !/value="local"/.test(html));
+check("页面没有本机 AI 地址 / 模型输入框", !/ai-endpoint|ai-model|11434/.test(html));
+check("页面不引用任何 AI 客户端脚本", !/localai\.js/.test(html));
+check("页面没有“AI 回答”展示区（结果只由用户自己的 AI 给出）", !/ai-answer/.test(html));
+store["ai-target"].value = "chatgpt";
 store["problem-text"].value = "7-1 两数求和\n输入 a 和 b，输出 a + b。";
 store["btn-answer"].dispatch("click");
-check("本地模式：AI 回答区出现", !store["ai-answer-wrap"].classList.contains("hidden"));
-check("本地模式：连不上时给出可照做的指引", /Ollama|ollama|浏览器/.test(store["ai-status"].textContent), store["ai-status"].textContent);
-store["ai-target"].value = "chatgpt";
-store["ai-target"].dispatch("change");
-check("切回网站模式后本机设置收起", store["local-ai-box"].classList.contains("hidden"));
+check("“答案与解析”只拼提示词并提示去自己的 AI 粘贴", /Ctrl \+ V/.test(store["ai-status"].textContent), store["ai-status"].textContent);
 
 console.log("=== 布局回归：错误列表不能盖住下方面板 ===");
 const css = readFileSync(path.join(root, "assets/css/styles.css"), "utf8");
