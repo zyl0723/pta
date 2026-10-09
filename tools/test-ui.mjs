@@ -144,5 +144,12 @@ check("题目为空时给出占位提示", sandbox.PTAPrompt.build({ code: "int 
 store["btn-copy-prompt"].dispatch("click");
 check("点「复制提示词」不会崩", typeof store["copy-status"].textContent === "string" && store["copy-status"].textContent.length > 0, store["copy-status"].textContent);
 
+console.log("=== 布局回归：错误列表不能盖住下方面板 ===");
+const css = readFileSync(path.join(root, "assets/css/styles.css"), "utf8");
+check("检查结果面板不再吸附（sticky 会盖住紧随其后的面板）", html.indexOf("panel sticky") < 0, "index.html 里仍存在 panel sticky");
+check("样式里不再给结果面板设 sticky", !/\.panel\.sticky\s*\{/.test(css));
+check("错误列表有最大高度，长列表只在自己框内滚动", /\.findings\s*\{[^}]*max-height/.test(css));
+check("题目/反馈面板紧跟在检查结果面板之后（同级）", /id="findings"[\s\S]{0,1200}?id="problem-text"/.test(html));
+
 console.log("\n集成测试：" + ok + " 通过 / " + (ok + bad) + " 项");
 if (bad) process.exitCode = 1;

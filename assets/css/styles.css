@@ -64,7 +64,6 @@ code { font-family: var(--mono); font-size: 0.92em; background: #eef1f7; padding
   background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
   padding: 16px; box-shadow: 0 1px 2px rgba(24, 39, 75, 0.04);
 }
-.panel.sticky { position: sticky; top: 84px; max-height: calc(100vh - 104px); display: flex; flex-direction: column; }
 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .panel-head h2 { font-size: 14.5px; letter-spacing: 0.2px; }
 .panel-actions { display: flex; align-items: center; gap: 8px; }
@@ -179,6 +178,7 @@ pre.stdout {
 .compare-note { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
 
 /* ---------- 题目 / 提交反馈面板 ---------- */
+#problem-text, #pta-feedback { min-height: 116px; }
 .field-note {
   font-size: 12.5px; line-height: 1.75; color: var(--muted);
   background: #f7f9ff; border: 1px solid var(--line); border-left: 3px solid var(--accent);
@@ -208,7 +208,8 @@ pre.stdout {
 .summary.warn { background: var(--warn-soft); border-color: #f0dcb4; color: #8a5a06; }
 .summary.note { background: var(--info-soft); border-color: #cddffb; color: #1e4fa3; }
 
-.findings { margin-top: 12px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+/* 错误列表一长就在自己的框里滚动，不去挤占下面的面板 */
+.findings { margin-top: 12px; max-height: min(52vh, 520px); overflow: auto; display: flex; flex-direction: column; gap: 10px; }
 .empty { font-size: 13px; color: var(--muted); padding: 10px 2px; }
 
 .finding {
@@ -264,7 +265,7 @@ pre.stdout {
 /* ---------- 响应式 ---------- */
 @media (max-width: 1000px) {
   .layout { grid-template-columns: 1fr; }
-  .panel.sticky { position: static; max-height: none; }
+  .findings { max-height: none; }
   .run-grid { grid-template-columns: 1fr; }
   .topbar { flex-wrap: wrap; }
 }
