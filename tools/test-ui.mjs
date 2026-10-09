@@ -70,11 +70,10 @@ sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 
-for (const f of ["assets/vendor/jscpp.js", "assets/js/analyzer.js", "assets/js/runner.js", "assets/js/problems.js", "assets/js/prompt.js", "assets/js/account.js", "assets/js/aiclient.js", "assets/js/app.js"]) {
+for (const f of ["assets/vendor/jscpp.js", "assets/js/analyzer.js", "assets/js/runner.js", "assets/js/problems.js", "assets/js/prompt.js", "assets/js/aiclient.js", "assets/js/app.js"]) {
   vm.runInContext(readFileSync(path.join(root, f), "utf8"), sandbox, { filename: f });
 }
 function flush() { while (timers.length) timers.shift()(); }
-const account = sandbox.PTAAccount;
 async function waitFor(fn, ms = 5000) {
   const t0 = Date.now();
   while (Date.now() - t0 < ms) {
@@ -149,46 +148,21 @@ store["pta-feedback"].value = "测试点 2：答案错误";
 check("两个框可以正常写入", store["problem-text"].value.indexOf("两个数的和") >= 0 && store["pta-feedback"].value.indexOf("答案错误") >= 0);
 check("新面板使用灰粉色主题", /class="panel subject"/.test(html));
 
-console.log("=== 登录门禁：没登录不能用 AI 模块 ===");
-check("顶栏有登录 / 退出按钮和账号位", /id="btn-account"/.test(html) && /id="btn-logout"/.test(html) && /id="account-label"/.test(html));
-check("页面有登录 / 注册弹窗", /id="auth"/.test(html) && /id="tab-register"/.test(html));
-check("登录弹窗写清账号只在本机、验证码不会真的发邮件", /只在这台浏览器里/.test(html) && /不会真的发邮件/.test(html));
-check("登录弹窗说明登录一次长期有效", /不用再登/.test(html));
-check("初始状态是未登录", !account.isLoggedIn());
-check("未登录时顶栏显示「登录」", !store["btn-account"].classList.contains("hidden") && store["btn-logout"].classList.contains("hidden"));
+console.log("=== 免登录：页面不再有账号系统 ===");
+check("页面里没有登录 / 注册弹窗", !/id="auth"/.test(html) && !/id="tab-register"/.test(html));
+check("顶栏没有登录 / 退出按钮和账号位", !/id="btn-account"/.test(html) && !/id="btn-logout"/.test(html) && !/id="account-label"/.test(html));
+check("不再引入 account.js", !/assets\/js\/account\.js/.test(html));
 
 store["problem-text"].value = "7-1 两数求和\n输入 a 和 b，输出 a + b。";
 store["prompt-out"].value = "";
 store["btn-answer"].dispatch("click");
-check("未登录点「生成答案与解析」会弹出登录框", !store["auth"].classList.contains("hidden"));
-check("未登录时不会生成提示词", store["prompt-out"].value === "");
+check("不登录也能直接生成「答案与解析」提示词", store["prompt-out"].value.indexOf("两数求和") >= 0);
 
-console.log("=== 注册（验证码 + 设置密码）并自动登录 ===");
-store["tab-register"].dispatch("click");
-check("切到注册面板", !store["auth-register"].classList.contains("hidden") && store["auth-login"].classList.contains("hidden"));
-
-store["reg-email"].value = "tester@qq.com";
-store["btn-send-code"].dispatch("click");
-await waitFor(() => /\d{6}/.test(store["code-note"].textContent));
-check("点「获取验证码」后页面显示本机验证码", /\d{6}/.test(store["code-note"].textContent), store["code-note"].textContent);
-check("验证码旁边写明不会发邮件", /不会发邮件/.test(store["code-note"].textContent), store["code-note"].textContent);
-const regCode = (store["code-note"].textContent.match(/\d{6}/) || [""])[0];
-
-store["reg-code"].value = "000000";
-store["reg-password"].value = "abc123456";
-store["reg-password2"].value = "abc123456";
-store["btn-do-register"].dispatch("click");
-await new Promise((r) => setTimeout(r, 250));
-check("验证码填错时注册失败并提示", /验证码/.test(store["auth-status"].textContent), store["auth-status"].textContent);
-check("验证码错的时候没有登录", !account.isLoggedIn());
-
-store["reg-code"].value = regCode;
-store["btn-do-register"].dispatch("click");
-await waitFor(() => account.isLoggedIn());
-check("验证码正确时注册成功并自动登录", account.isLoggedIn() && account.current().email === "tester@qq.com");
-check("注册后登录弹窗关闭", store["auth"].classList.contains("hidden"));
-check("顶栏显示邮箱", store["account-label"].textContent === "tester@qq.com" && !store["account-label"].classList.contains("hidden"));
-check("顶栏出现「退出」并收起「登录」", !store["btn-logout"].classList.contains("hidden") && store["btn-account"].classList.contains("hidden"));
+console.log("=== 安全加固：CSP 与清除密钥 ===");
+check("页面声明了 Content-Security-Policy", /http-equiv="Content-Security-Policy"/.test(html));
+check("CSP 禁止外部脚本源、禁止被 iframe 嵌套", /script-src 'self'/.test(html) && /default-src 'none'/.test(html) && /frame-ancestors 'none'/.test(html));
+check("CSP 仍允许自带 API Key 直连服务商", /connect-src \*/.test(html));
+check("「API」模块有清除本机保存密钥的按钮", /id="btn-ai-forget"/.test(html));
 
 console.log("=== 答案与解析 / 练习（提示词生成） ===");
 check("答案与解析按钮已加入", html.indexOf("btn-answer") >= 0);
@@ -265,25 +239,12 @@ store["prompt-out"].value = "";
 store["btn-ai-run"].dispatch("click");
 check("没准备提示词时提示先生成", /先生成|先点上面/.test(store["ai-status"].textContent), store["ai-status"].textContent);
 
-console.log("=== 退出登录后 AI 模块重新上锁 ===");
-store["btn-logout"].dispatch("click");
-check("退出后不再是登录状态", !account.isLoggedIn());
-check("退出后顶栏回到「登录」", !store["btn-account"].classList.contains("hidden") && store["btn-logout"].classList.contains("hidden"));
-store["prompt-out"].value = "";
-store["btn-answer"].dispatch("click");
-check("退出后再点 AI 按钮会重新要求登录", !store["auth"].classList.contains("hidden") && store["prompt-out"].value === "");
-
-store["login-email"].value = "tester@qq.com";
-store["login-password"].value = "not-the-password";
-store["btn-do-login"].dispatch("click");
-await new Promise((r) => setTimeout(r, 200));
-check("密码不对登录失败", /密码不对/.test(store["auth-status"].textContent), store["auth-status"].textContent);
-
-store["login-password"].value = "abc123456";
-store["btn-do-login"].dispatch("click");
-await waitFor(() => account.isLoggedIn());
-check("用注册时的邮箱密码能登录回来", account.isLoggedIn() && account.current().email === "tester@qq.com");
-check("登录后弹窗关闭、顶栏显示邮箱", store["auth"].classList.contains("hidden") && store["account-label"].textContent === "tester@qq.com");
+console.log("=== 一键清除本机保存的 API 信息 ===");
+check("清除前密钥确实存在本机", lsData.get("pta-ai-key") === "sk-test-1234567890" && !!lsData.get("pta-ai-config"));
+store["btn-ai-forget"].dispatch("click");
+check("点「清除」后本机不再有密钥与配置", lsData.get("pta-ai-key") === undefined && lsData.get("pta-ai-config") === undefined);
+check("点「清除」后输入框也清空", store["ai-key"].value === "" && store["ai-model"].value === "" && store["ai-base"].value === "");
+check("点「清除」有明确提示", /已清除/.test(store["ai-status"].textContent), store["ai-status"].textContent);
 
 console.log("=== 进站提示弹窗 ===");
 const css = readFileSync(path.join(root, "assets/css/styles.css"), "utf8");
@@ -310,8 +271,6 @@ for (const el of Object.values(store)) { el.classList._s.clear(); el._handlers =
 vm.runInContext(readFileSync(path.join(root, "assets/js/app.js"), "utf8"), sandbox, { filename: "app.js" });
 flush();
 check("勾过之后再次进站不再弹出", store["welcome"].classList.contains("hidden"));
-check("重新打开网址仍然是登录状态（不用再登）", account.isLoggedIn());
-check("重新打开后顶栏直接显示邮箱", store["account-label"].textContent === "tester@qq.com");
 
 console.log("=== 布局回归：错误列表不能盖住下方面板 ===");
 check("检查结果面板不再吸附（sticky 会盖住紧随其后的面板）", html.indexOf("panel sticky") < 0, "index.html 里仍存在 panel sticky");

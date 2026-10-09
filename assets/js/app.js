@@ -34,8 +34,8 @@
     fillProblemSelect();
     bindEvents();
     initWelcome();
+    dropLegacyAccountData();
     loadAiConfig();
-    refreshAccountUI();
     refreshGutter();
     analyzeNow();
   }
@@ -99,21 +99,11 @@
       });
     });
 
-    /* 账号：登录 / 注册 / 退出 */
-    $("btn-account").addEventListener("click", function () { openAuth("login"); });
-    $("btn-logout").addEventListener("click", doLogout);
-    $("btn-auth-x").addEventListener("click", closeAuth);
-    $("auth").addEventListener("click", function (e) { if (e.target === $("auth")) closeAuth(); });
-    $("tab-login").addEventListener("click", function () { switchAuthTab("login"); });
-    $("tab-register").addEventListener("click", function () { switchAuthTab("register"); });
-    $("btn-send-code").addEventListener("click", sendRegCode);
-    $("btn-do-login").addEventListener("click", doLogin);
-    $("btn-do-register").addEventListener("click", doRegister);
-
     /* 自带 API Key：设置与直接生成 */
     $("ai-preset").addEventListener("change", applyPreset);
     $("btn-ai-models").addEventListener("click", pullModels);
     $("btn-ai-save").addEventListener("click", saveAiConfig);
+    $("btn-ai-forget").addEventListener("click", forgetAiConfig);
     $("btn-ai-run").addEventListener("click", runAi);
     $("btn-ai-stop").addEventListener("click", stopAi);
   }
@@ -173,7 +163,6 @@
   }
 
   function showPrompt(kind) {
-    if (!requireLogin()) return;
     if (!needProblem() || !window.PTAPrompt) return;
     var ctx = {
       problem: $("problem-text").value,
@@ -202,115 +191,6 @@
     $("panel-ai").scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
-  /* ---------- 账号：本机注册 / 登录（实现见 assets/js/account.js） ---------- */
-  function accountApi() { return window.PTAAccount || null; }
-
-  function setAuthStatus(text) {
-    var el = $("auth-status");
-    if (el) el.textContent = text == null ? "" : text;
-  }
-
-  function requireLogin() {
-    var acc = accountApi();
-    if (acc && acc.isLoggedIn()) return true;
-    openAuth("login");
-    setAuthStatus("「答案与解析」和「练习」要先登录才能用。注册只要一步，登录一次以后打开这个网址就不用再登了。");
-    return false;
-  }
-
-  function openAuth(tab) {
-    if (!$("auth")) return;
-    switchAuthTab(tab || "login");
-    setAuthStatus("");
-    $("auth").classList.remove("hidden");
-  }
-
-  function closeAuth() {
-    if ($("auth")) $("auth").classList.add("hidden");
-  }
-
-  function switchAuthTab(tab) {
-    var isReg = tab === "register";
-    $("tab-login").classList[isReg ? "remove" : "add"]("active");
-    $("tab-register").classList[isReg ? "add" : "remove"]("active");
-    $("auth-login").classList[isReg ? "add" : "remove"]("hidden");
-    $("auth-register").classList[isReg ? "remove" : "add"]("hidden");
-    setAuthStatus("");
-  }
-
-  function refreshAccountUI() {
-    var acc = accountApi();
-    var me = acc && acc.current();
-    $("account-label").textContent = me ? me.email : "";
-    $("account-label").classList[me ? "remove" : "add"]("hidden");
-    $("btn-account").classList[me ? "add" : "remove"]("hidden");
-    $("btn-account").textContent = me ? "切换账号" : "登录";
-    $("btn-logout").classList[me ? "remove" : "add"]("hidden");
-  }
-
-  function sendRegCode() {
-    var acc = accountApi();
-    if (!acc) return;
-    acc.sendCode($("reg-email").value).then(function (code) {
-      $("reg-code").value = "";
-      $("code-note").textContent = "本机模式：没有服务器，验证码不会发邮件，就显示在这里 → " + code + "（10 分钟内有效）";
-      setAuthStatus("");
-    }, function (err) {
-      $("code-note").textContent = "";
-      setAuthStatus(err.message);
-    });
-  }
-
-  function afterAuth(okText, email) {
-    closeAuth();
-    refreshAccountUI();
-    updateRunNote();
-    $("panel-ai").classList.remove("hidden");
-    setAiStatus(okText + email + "。");
-  }
-
-  function doLogin() {
-    var acc = accountApi();
-    if (!acc) return;
-    setAuthStatus("正在登录…");
-    acc.login({ email: $("login-email").value, password: $("login-password").value }).then(function (r) {
-      $("login-password").value = "";
-      setAuthStatus("");
-      afterAuth("已登录：", r.email);
-    }, function (err) {
-      setAuthStatus(err.message);
-    });
-  }
-
-  function doRegister() {
-    var acc = accountApi();
-    if (!acc) return;
-    setAuthStatus("正在注册…");
-    acc.register({
-      email: $("reg-email").value,
-      password: $("reg-password").value,
-      confirm: $("reg-password2").value,
-      code: $("reg-code").value
-    }).then(function (r) {
-      $("reg-password").value = "";
-      $("reg-password2").value = "";
-      $("reg-code").value = "";
-      $("code-note").textContent = "";
-      setAuthStatus("");
-      afterAuth("注册成功，已登录：", r.email);
-    }, function (err) {
-      setAuthStatus(err.message);
-    });
-  }
-
-  function doLogout() {
-    var acc = accountApi();
-    if (acc) acc.logout();
-    refreshAccountUI();
-    updateRunNote();
-    setAiStatus("已退出登录。AI 模块需要重新登录才能用。");
-  }
-
   /* ---------- 自带 API Key：配置与在本站直接生成 ---------- */
   var AI_CFG_KEY = "pta-ai-config";
   var AI_KEY_KEY = "pta-ai-key";
@@ -324,6 +204,11 @@
   }
   function lsDel(key) {
     try { if (window.localStorage) window.localStorage.removeItem(key); } catch (err) { /* 无所谓 */ }
+  }
+
+  /* 早先版本用过「本机账号」登录，后来删掉了登录系统；顺手清掉可能残留的数据。 */
+  function dropLegacyAccountData() {
+    ["pta-accounts", "pta-session", "pta-pending-code"].forEach(lsDel);
   }
 
   function aiConfig() {
@@ -388,6 +273,19 @@
     updateRunNote();
   }
 
+  /* 一键忘掉本机存的 API 信息：地址、密钥、模型全清掉，输入框也清空。 */
+  function forgetAiConfig() {
+    lsDel(AI_CFG_KEY);
+    lsDel(AI_KEY_KEY);
+    aiKeyMemory = "";
+    $("ai-key").value = "";
+    $("ai-base").value = "";
+    $("ai-model").value = "";
+    $("chk-ai-remember").checked = false;
+    setAiStatus("已清除本机保存的 API 地址、密钥和模型。");
+    updateRunNote();
+  }
+
   function pullModels() {
     var base = $("ai-base").value.trim();
     var key = $("ai-key").value.trim() || aiKey();
@@ -408,8 +306,6 @@
   function updateRunNote() {
     var note = $("ai-run-note");
     if (!note) return;
-    var acc = accountApi();
-    if (!acc || !acc.isLoggedIn()) { note.textContent = "先去顶栏登录。"; return; }
     note.textContent = hasAiConfig()
       ? "将发往：" + window.PTAAI.chatEndpoint(aiConfig().base)
       : "先在上面填好 API 地址、密钥和模型。";
@@ -422,8 +318,6 @@
   }
 
   function runAi() {
-    var acc = accountApi();
-    if (!acc || !acc.isLoggedIn()) { requireLogin(); return; }
     var text = $("prompt-out").value;
     if (!text) { setAiStatus("先点上面的「生成答案与解析」或「生成相似练习题」，把要问的内容准备好。"); return; }
     var c = aiConfig();

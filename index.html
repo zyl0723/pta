@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>C 语言习题检查器 · 基础题代码自检</title>
 <meta name="description" content="粘贴 C 语言代码，立即指出常见错误的位置、原因和改法，并能真实运行代码、与题目期望输出逐行对比。全部在浏览器本地完成。">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src *; form-action 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'">
     <link rel="icon" type="image/svg+xml" href="assets/img/logo-cat.svg">
     <link rel="stylesheet" href="assets/css/styles.css">
 </head>
@@ -19,9 +20,6 @@
     </div>
   </div>
   <div class="topbar-actions">
-    <span id="account-label" class="account-label hidden"></span>
-    <button id="btn-account" class="btn ghost">登录</button>
-    <button id="btn-logout" class="btn ghost hidden">退出</button>
     <button id="btn-toggle-cheatsheet" class="btn ghost">常见错误速查 ▾</button>
   </div>
 </header>
@@ -108,7 +106,7 @@
         <span class="ai-label">答案与解析</span>
         <button id="btn-answer" class="btn tiny primary">生成答案与解析</button>
       </div>
-      <p class="ai-hint">粘好上面的题目后点这个按钮：页面会按<b>你的题目 + 你的代码 + 错误点</b>拼好一段提问。登录后二选一：<b>① 在本站生成</b>——先在下面「API」模块里填好自己的 API，再点这个按钮直接出结果；<b>② 复制提示词</b>——复制下来，粘到你自己的 AI 网站去问。<b>本站不提供 AI、不经手中转、也不替你付任何费用。</b></p>
+      <p class="ai-hint">粘好上面的题目后点这个按钮：页面会按<b>你的题目 + 你的代码 + 错误点</b>拼好一段提问。不用登录、不用注册，接下来二选一：<b>① 在本站生成</b>——先在下面「API」模块里填好自己的 API，再点「在本站生成」直接出结果；<b>② 复制提示词</b>——复制下来，粘到你自己的 AI 网站去问。<b>本站不提供 AI、不经手中转、也不替你付任何费用。</b></p>
 
       <label class="field">
         <span>应用修改：把 PTA 提交后给出的批改提示原文粘进来</span>
@@ -179,6 +177,11 @@
 
       <p class="ai-hint" id="ai-setup-note">密钥只保留在你自己的浏览器里（不勾「记住」就只用于这次）；请求由你的浏览器直接发往上面这个地址，本站不做中转、也不上传密钥。</p>
       <p class="api-get">还没有 Key？去 DeepSeek 官网申请：<a class="api-link" href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener noreferrer">获取api</a></p>
+
+      <div class="ai-row">
+        <button id="btn-ai-forget" class="btn tiny" type="button">清除本机保存的密钥</button>
+        <span class="dim">点了就忘掉这台浏览器里存过的 API 地址、密钥和模型。</span>
+      </div>
     </div>
 
     <div id="panel-ai" class="panel ai-panel hidden">
@@ -342,7 +345,7 @@ printf("%d", a);</pre>
 
     <p><b>但它只检查你已经写好的代码。</b>它自己不会解题、不会替你写代码、不会出题；你还没写出来的逻辑对不对，它也判断不了。它是一个检查工具，不是一个答题工具。</p>
 
-    <p><b>想让它更聪明，得你自己有 AI。</b>用「答案与解析」和「练习」需要先登录（本机账号，登录一次长期有效）。点按钮后页面会按<b>你的题目、你的代码和错误点</b>拼好一段提问：填上<b>你自己的 API 地址和密钥</b>就能点「在本站生成」直接出结果；也可以点「复制提示词」，粘到你自己账号的 AI 网站（ChatGPT / DeepSeek / Kimi / 豆包 / 通义）去问。AI 会照着题目给出带注释的答案、帮你改错，还能照原题出相似的题让你练。本站不含 AI、不中转、也不替你付任何费用。</p>
+    <p><b>想让它更聪明，得你自己有 AI。</b>不用登录、不用注册，点「生成答案与解析」或「生成相似练习题」，页面会按<b>你的题目、你的代码和错误点</b>拼好一段提问，然后二选一：填上<b>你自己的 API 地址和密钥</b>就能点「在本站生成」直接出结果；也可以点「复制提示词」，粘到你自己账号的 AI 网站（ChatGPT / DeepSeek / Kimi / 豆包 / 通义）去问。AI 会照着题目给出带注释的答案、帮你改错，还能照原题出相似的题让你练。本站不含 AI、不中转、也不替你付任何费用。</p>
 
     <p class="welcome-foot">这个小工具是作者自己嫌反复拍照问 AI 太麻烦才做的，比较粗糙，能用就行。</p>
 
@@ -353,62 +356,11 @@ printf("%d", a);</pre>
   </div>
 </div>
 
-<div id="auth" class="welcome hidden" role="dialog" aria-modal="true" aria-labelledby="auth-title">
-  <div class="welcome-card auth-card">
-    <button id="btn-auth-x" class="welcome-x" type="button" aria-label="关闭">×</button>
-    <h2 id="auth-title">先登录，再用 AI 模块</h2>
-    <p class="auth-lead">「答案与解析」和「练习」需要登录。登录一次就长期有效，下次打开这个网址不用再登。</p>
-
-    <div class="auth-tabs">
-      <button id="tab-login" class="auth-tab active" type="button">登录</button>
-      <button id="tab-register" class="auth-tab" type="button">注册新账号</button>
-    </div>
-
-    <div id="auth-login" class="auth-pane">
-      <label class="field">
-        <span>邮箱</span>
-        <input id="login-email" class="input" type="email" autocomplete="username" placeholder="123456789@qq.com">
-      </label>
-      <label class="field">
-        <span>密码</span>
-        <input id="login-password" class="input" type="password" autocomplete="current-password">
-      </label>
-      <button id="btn-do-login" class="btn primary" type="button">登录</button>
-    </div>
-
-    <div id="auth-register" class="auth-pane hidden">
-      <label class="field">
-        <span>邮箱</span>
-        <input id="reg-email" class="input" type="email" autocomplete="email" placeholder="123456789@qq.com">
-      </label>
-      <div class="ai-row">
-        <button id="btn-send-code" class="btn tiny" type="button">获取验证码</button>
-        <input id="reg-code" class="input code-input" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="6 位验证码">
-      </div>
-      <p class="auth-note" id="code-note"></p>
-      <label class="field">
-        <span>设置密码（至少 6 位）</span>
-        <input id="reg-password" class="input" type="password" autocomplete="new-password">
-      </label>
-      <label class="field">
-        <span>再输一次密码</span>
-        <input id="reg-password2" class="input" type="password" autocomplete="new-password">
-      </label>
-      <button id="btn-do-register" class="btn primary" type="button">完成注册并登录</button>
-    </div>
-
-    <p id="auth-status" class="ai-status"></p>
-
-    <p class="welcome-foot">说明：本站是纯静态页面，没有服务器，所以账号和验证码都只在这台浏览器里——换电脑、换浏览器或清缓存就没了，验证码是页面本地生成的，不会真的发邮件。密码用浏览器自带的加密接口加盐存储，不保存明文。</p>
-  </div>
-</div>
-
 <script src="assets/vendor/jscpp.js"></script>
 <script src="assets/js/analyzer.js"></script>
 <script src="assets/js/runner.js"></script>
 <script src="assets/js/problems.js"></script>
 <script src="assets/js/prompt.js"></script>
-<script src="assets/js/account.js"></script>
 <script src="assets/js/aiclient.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
