@@ -1,0 +1,12 @@
+# 依赖与构建产物
+node_modules/
+
+# 本地临时调试文件
+.scratch/
+*.log
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

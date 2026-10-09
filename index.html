@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C 语言习题检查器 · 基础题代码自检</title>
+<meta name="description" content="粘贴 C 语言代码，立即指出常见错误的位置、原因和改法，并能真实运行代码、与题目期望输出逐行对比。全部在浏览器本地完成。">
+<link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">C</span>
+    <div>
+      <h1>C 语言习题检查器</h1>
+      <p>指出错误在哪、为什么错、怎么改 · 代码不离开你的浏览器</p>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <button id="btn-toggle-cheatsheet" class="btn ghost">常见错误速查 ▾</button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <section class="col col-left">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>你的代码</h2>
+        <div class="panel-actions">
+          <button id="btn-sample" class="btn tiny">载入示例</button>
+          <button id="btn-clear" class="btn tiny">清空</button>
+        </div>
+      </div>
+
+      <div class="editor" id="editor">
+        <div class="gutter" id="gutter"><div class="gutter-inner" id="gutterInner"></div></div>
+        <textarea id="code" wrap="off" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"
+          placeholder="把你的 C 代码粘贴到这里……"></textarea>
+      </div>
+
+      <div class="toolbar">
+        <button id="btn-check" class="btn primary">立即检查</button>
+        <button id="btn-run" class="btn">运行并对比</button>
+        <button id="btn-check-run" class="btn ghost">检查 + 运行</button>
+        <span class="toolbar-tip">边打字边检查，结果在右侧。</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>用样例数据实测</h2>
+        <div class="panel-actions">
+          <select id="problem-select" class="select"></select>
+        </div>
+      </div>
+
+      <div id="problem-info" class="problem-info hidden"></div>
+
+      <div class="run-grid">
+        <label class="field">
+          <span>程序输入（每行一组，按题目给的样例填写）</span>
+          <textarea id="stdin" spellcheck="false" placeholder="例如：&#10;3 4"></textarea>
+        </label>
+        <label class="field">
+          <span>题目要求的输出（用来逐行对比）</span>
+          <textarea id="expected" spellcheck="false" placeholder="例如：&#10;7"></textarea>
+        </label>
+      </div>
+
+      <div class="run-actions">
+        <button id="btn-fill-reference" class="btn tiny hidden">填入参考实现</button>
+        <label class="check"><input type="checkbox" id="chk-strict"> 严格模式（空格、换行也必须完全一致）</label>
+      </div>
+
+      <div id="run-status" class="run-status">还没有运行过。</div>
+      <div id="run-body" class="run-body"></div>
+    </div>
+  </section>
+
+  <section class="col col-right">
+    <div class="panel sticky">
+      <div class="panel-head">
+        <h2>检查结果</h2>
+        <div class="panel-actions"><span class="legend"><i class="dot sev-error"></i>错误<i class="dot sev-warn"></i>可疑<i class="dot sev-info"></i>建议</span></div>
+      </div>
+      <div id="summary" class="summary"></div>
+      <div id="findings" class="findings"></div>
+    </div>
+  </section>
+
+</main>
+
+<section id="cheatsheet" class="cheatsheet hidden">
+  <h2>常见错误速查</h2>
+  <p class="cs-intro">下面这些是基础题里最常出现的问题，每一条都给出「错的写法」和「正确的写法」。点右侧检查结果里的条目会自动跳到对应行。</p>
+  <div class="cs-grid">
+
+    <article class="cs-card">
+      <h3>scanf 忘了 &amp;</h3>
+      <pre class="bad">scanf("%d", n);</pre>
+      <pre class="good">scanf("%d", &amp;n);</pre>
+      <p>scanf 要把读到的值写回变量，必须给地址。数组名本身是地址，<code>scanf("%s", s)</code> 不加 &amp;。</p>
+    </article>
+
+    <article class="cs-card">
+      <h3>double 用 %d 读入</h3>
+      <pre class="bad">double d; scanf("%d", &amp;d);</pre>
+      <pre class="good">double d; scanf("%lf", &amp;d);</pre>
+      <p>读 double 用 %lf，读 float 用 %f，读 int 用 %d。读错了数值完全不对。</p>
+    </article>
+
+    <article class="cs-card">
+      <h3>printf 输出类型不对应</h3>
+      <pre class="bad">double d = 1.5; printf("%d", d);</pre>
+      <pre class="good">double d = 1.5; printf("%.2f", d);</pre>
+      <p>%d 只输出整数，输出浮点要用 %f（可写 %.2f 表示保留两位）。</p>
+    </article>
+
+    <article class="cs-card">
+      <h3>整数除法丢了小数</h3>
+      <pre class="bad">int s = 7, n = 2; double a = s / n;</pre>
+      <pre class="good">double a = (double)s / n;</pre>
+      <p>两个整数相除结果只保留整数部分，7 / 2 得到 3 而不是 3.5。</p>
+    </article>
+
+    <article class="cs-card">
+      <h3>少写分号</h3>
+      <pre class="bad">int a = 1
+printf("%d", a);</pre>
+      <pre class="good">int a = 1;
+printf("%d", a);</pre>
+      <p>一行语句结束要有分号。报错行号有时会指向下一行，要看上一行结尾。</p>
+    </article>
+
+    <article class="cs-card">
+      <h3>条件里把 == 写成 =</h3>
+      <pre class="bad">if (a = 0) printf("零");</pre>
+      <pre class="good">if (a == 0) printf("零");</pre>
+      <p>= 是赋值，== 才是比较。写错后条件永远成立（或永远不成立）。</p>
+    </article>
+
+    <article class="cs-card">
+      <h3>if 后面多了分号</h3>
+      <pre class="bad">if (a &gt; 0);
+    printf("正数");</pre>
+      <pre class="good">if (a &gt; 0) {
+    printf("正数");
+}</pre>
+      <p>分号让 if 的语句体变成了空语句，后面的代码与判断无关，会无条件执行。</p>
+    </article>
+
+    <article class="cs-card">
+      <h3>多组数据读不完 / 死循环</h3>
+      <pre class="bad">while (scanf("%d", &amp;n)) { ... }</pre>
+      <pre class="good">while (scanf("%d", &amp;n) != EOF) { ... }</pre>
+      <p>scanf 成功时返回读到的个数（大于 0），恒为真。读到文件结束要判断 EOF。</p>
+    </article>
+
+    <article class="cs-card">
+      <h3>数组下标越界</h3>
+      <pre class="bad">int a[5]; a[5] = 1;</pre>
+      <pre class="good">int a[5]; a[4] = 1;</pre>
+      <p>int a[5] 的合法下标是 0 ~ 4。循环写 for (i = 0; i &lt;= 5; i++) 也会越界。</p>
+    </article>
+
+    <article class="cs-card">
+      <h3>用了中文标点</h3>
+      <pre class="bad">int a = 1；</pre>
+      <pre class="good">int a = 1;</pre>
+      <p>从 Word、PPT 复制代码会把英文标点自动换成全角，编译器会直接报错。</p>
+    </article>
+
+    <article class="cs-card">
+      <h3>转义字符写成斜杠</h3>
+      <pre class="bad">printf("hello/n");</pre>
+      <pre class="good">printf("hello\n");</pre>
+      <p>换行是反斜杠 n，输出后会真的换行；/n 只会原样打印 /n。</p>
+    </article>
+
+    <article class="cs-card">
+      <h3>long long 的占位符</h3>
+      <pre class="bad">long long s; printf("%d", s);</pre>
+      <pre class="good">long long s; printf("%lld", s);</pre>
+      <p>int 最大约 21 亿。求和、阶乘这类结果可能更大时，要用 long long 配 %lld。</p>
+    </article>
+
+    <article class="cs-card">
+      <h3>字符串没结束符 / 数组太小</h3>
+      <pre class="bad">char s[5]; scanf("%s", s); // 输入 hello</pre>
+      <pre class="good">char s[64]; scanf("%63s", s);</pre>
+      <p>字符串末尾需要 '\0'，所以数组至少要能装下内容加 1 个字符，否则会写越界。</p>
+    </article>
+
+    <article class="cs-card">
+      <h3>浮点数用 == 比较</h3>
+      <pre class="bad">if (a == 0.1 + 0.2) ...</pre>
+      <pre class="good">if (fabs(a - 0.3) &lt; 1e-6) ...</pre>
+      <p>小数在计算机里无法精确表示，比较差值才可靠。</p>
+    </article>
+
+  </div>
+
+  <div class="cs-footer">
+    <h3>这个工具的边界</h3>
+    <ul>
+      <li>静态检查只覆盖「常见写法错误」，它不会替你做算法判断。逻辑对不对，要靠运行样例来验证。</li>
+      <li>运行使用的是一个内置的 C 解释器（JSCPP），覆盖基础题常用的语法和标准库函数，并已针对 scanf / printf / EOF / long long 等做了修正。</li>
+      <li>遇到它不支持的写法时，会明确告诉你「无法运行」，不会随便给你一个结论。</li>
+      <li>所有计算都在你的浏览器里完成，代码不会上传到任何服务器。</li>
+    </ul>
+  </div>
+</section>
+
+<footer class="footer">
+  <span>本地运行 · 不上传代码 · 结果仅供参考，最终以 PTA 判题为准</span>
+</footer>
+
+<script src="assets/vendor/jscpp.js"></script>
+<script src="assets/js/analyzer.js"></script>
+<script src="assets/js/runner.js"></script>
+<script src="assets/js/problems.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
