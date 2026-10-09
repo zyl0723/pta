@@ -19,6 +19,9 @@
     </div>
   </div>
   <div class="topbar-actions">
+    <span id="account-label" class="account-label hidden"></span>
+    <button id="btn-account" class="btn ghost">登录</button>
+    <button id="btn-logout" class="btn ghost hidden">退出</button>
     <button id="btn-toggle-cheatsheet" class="btn ghost">常见错误速查 ▾</button>
   </div>
 </header>
@@ -112,7 +115,7 @@
         </select>
         <button id="btn-answer" class="btn tiny primary">生成答案与解析</button>
       </div>
-      <p class="ai-hint">粘好上面的题目后点这个按钮：页面会按<b>你的题目 + 你的代码 + 错误点</b>拼好一段提示词并自动复制，同时打开你选的 AI 网站——到那边按 Ctrl + V 粘贴发送，AI 就会给出<b>每行都带注释的答案</b>和<b>容易出错的地方</b>。<b>这个页面自己不联网、不含 AI、不接任何接口、不需要任何密钥；用的是你自己账号的 AI，站长不花一分钱。</b></p>
+      <p class="ai-hint">粘好上面的题目后点这个按钮：页面会按<b>你的题目 + 你的代码 + 错误点</b>拼好一段提问。登录后二选一：<b>① 在本站生成</b>——用你自己填的 API Key 直接出结果（会给出每行带注释的答案和容易出错的地方）；<b>② 复制提示词</b>——去你自己的 AI 网站按 Ctrl + V 粘贴发送。<b>本站不提供 AI、不经手中转、也不替你付任何费用。</b></p>
 
       <label class="field">
         <span>应用修改：把 PTA 提交后给出的批改提示原文粘进来</span>
@@ -132,7 +135,7 @@
       </div>
 
       <div class="field-note">
-        <b>怎么用：</b>请把 PTA 上这道题的<b>全部文字完整复制</b>到上面的「题目」框里——题干、输入格式、输出格式、样例一个都别漏，题目不完整，生成的练习也会跑偏。然后点下面的按钮：它会把<b>你的题目 + 你这次的错误点</b>一起交给 AI，让 AI 随机出几道「题型相同、数据不同」的新题，帮你把这类题练熟。这里用的 AI 也是<b>你自己账号</b>的那个：本站不含 AI、不接任何接口、不产生任何费用。
+        <b>怎么用：</b>请把 PTA 上这道题的<b>全部文字完整复制</b>到上面的「题目」框里——题干、输入格式、输出格式、样例一个都别漏，题目不完整，生成的练习也会跑偏。然后点下面的按钮：它会把<b>你的题目 + 你这次的错误点</b>一起交给 AI，让 AI 出几道「题型相同、数据不同」的新题，帮你把这类题练熟。这里用的 AI 也是<b>你自己的</b>：要么填你自己的 API Key 在本站直接出结果，要么复制提示词去你的 AI 网站粘贴。本站不提供 AI，也不替你付任何费用。
       </div>
 
       <div class="ai-row">
@@ -149,15 +152,56 @@
 
     <div id="panel-ai" class="panel ai-panel hidden">
       <div class="panel-head">
-        <h2>发给 AI 的提示词</h2>
+        <h2>用 AI 出答案 / 出练习</h2>
         <div class="panel-actions">
+          <button id="btn-ai-setup" class="btn tiny">接入我自己的 AI</button>
           <button id="btn-copy-prompt" class="btn tiny">复制提示词</button>
         </div>
       </div>
       <div id="ai-status" class="ai-status">还没有生成。</div>
 
-      <p class="ai-hint" id="ai-hint">下面这段就是发给 AI 的内容，已经自动复制过。去刚打开的页面按 Ctrl + V 粘贴发送即可；如果没复制成功，就手动全选这段文字复制。</p>
+      <div id="ai-setup-box" class="ai-setup hidden">
+        <div class="ai-row">
+          <span class="ai-label">服务商</span>
+          <select id="ai-preset" class="select select-tiny">
+            <option value="deepseek">DeepSeek</option>
+            <option value="openai">OpenAI</option>
+            <option value="tongyi">通义千问</option>
+            <option value="moonshot">Kimi</option>
+            <option value="zhipu">智谱 GLM</option>
+            <option value="custom">自定义（OpenAI 兼容）</option>
+          </select>
+          <span class="ai-label">API 地址</span>
+          <input id="ai-base" class="input url-input" spellcheck="false" autocomplete="off" placeholder="https://api.deepseek.com/v1">
+          <button id="btn-ai-models" class="btn tiny" type="button">拉取模型</button>
+        </div>
+        <div class="ai-row">
+          <span class="ai-label">API Key</span>
+          <input id="ai-key" class="input key-input" type="password" spellcheck="false" autocomplete="off" placeholder="只存在你自己浏览器里">
+          <label class="check inline-check"><input type="checkbox" id="chk-ai-remember"> 记住密钥（存本机，下次不用重填）</label>
+        </div>
+        <div class="ai-row">
+          <span class="ai-label">模型</span>
+          <input id="ai-model" class="input model-input" list="ai-model-list" spellcheck="false" autocomplete="off" placeholder="deepseek-chat">
+          <datalist id="ai-model-list"></datalist>
+          <button id="btn-ai-save" class="btn tiny primary" type="button">保存并检测</button>
+        </div>
+        <p class="ai-hint" id="ai-setup-note">密钥只保留在你自己的浏览器里（不勾「记住」就只用于这次）；请求由你的浏览器直接发往上面这个地址，本站不做中转、也不上传密钥。</p>
+      </div>
+
+      <div class="ai-row">
+        <button id="btn-ai-run" class="btn primary" type="button">在本站生成</button>
+        <button id="btn-ai-stop" class="btn hidden" type="button">停止</button>
+        <span class="dim" id="ai-run-note">先在上面填好 API 地址、密钥和模型。</span>
+      </div>
+
+      <p class="ai-hint" id="ai-hint">下面这段就是发给 AI 的内容。想直接在本站出结果就点「在本站生成」；想用你自己的 AI 网页，就点「复制提示词」再粘贴过去。</p>
       <textarea id="prompt-out" class="prompt-out" readonly spellcheck="false"></textarea>
+
+      <div id="ai-answer-wrap" class="hidden">
+        <div class="block-title">AI 的回答（来自你自己配置的服务）</div>
+        <textarea id="ai-answer" class="prompt-out" readonly spellcheck="false"></textarea>
+      </div>
     </div>
   </section>
 
@@ -297,7 +341,7 @@ printf("%d", a);</pre>
 
     <p><b>但它只检查你已经写好的代码。</b>它自己不会解题、不会替你写代码、不会出题；你还没写出来的逻辑对不对，它也判断不了。它是一个检查工具，不是一个答题工具。</p>
 
-    <p><b>想让它更聪明，得你自己有 AI。</b>在「答案与解析」那一行选一个 AI 网站（ChatGPT / DeepSeek / Kimi / 豆包 / 通义），点按钮：页面会按<b>你的题目、你的代码和错误点</b>拼好一段提问并复制下来，同时打开那个网站，你按 <code>Ctrl + V</code> 粘过去发送就行。AI 会照着题目给出带注释的答案、帮你改错，还能照原题出相似的题让你练。用的是<b>你自己账号</b>的 AI，本站不需要密钥，也不接任何接口。</p>
+    <p><b>想让它更聪明，得你自己有 AI。</b>用「答案与解析」和「练习」需要先登录（本机账号，登录一次长期有效）。点按钮后页面会按<b>你的题目、你的代码和错误点</b>拼好一段提问：填上<b>你自己的 API 地址和密钥</b>就能点「在本站生成」直接出结果；也可以点「复制提示词」，粘到你自己账号的 AI 网站（ChatGPT / DeepSeek / Kimi / 豆包 / 通义）去问。AI 会照着题目给出带注释的答案、帮你改错，还能照原题出相似的题让你练。本站不含 AI、不中转、也不替你付任何费用。</p>
 
     <p class="welcome-foot">这个小工具是作者自己嫌反复拍照问 AI 太麻烦才做的，比较粗糙，能用就行。</p>
 
@@ -308,11 +352,63 @@ printf("%d", a);</pre>
   </div>
 </div>
 
+<div id="auth" class="welcome hidden" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+  <div class="welcome-card auth-card">
+    <button id="btn-auth-x" class="welcome-x" type="button" aria-label="关闭">×</button>
+    <h2 id="auth-title">先登录，再用 AI 模块</h2>
+    <p class="auth-lead">「答案与解析」和「练习」需要登录。登录一次就长期有效，下次打开这个网址不用再登。</p>
+
+    <div class="auth-tabs">
+      <button id="tab-login" class="auth-tab active" type="button">登录</button>
+      <button id="tab-register" class="auth-tab" type="button">注册新账号</button>
+    </div>
+
+    <div id="auth-login" class="auth-pane">
+      <label class="field">
+        <span>邮箱</span>
+        <input id="login-email" class="input" type="email" autocomplete="username" placeholder="123456789@qq.com">
+      </label>
+      <label class="field">
+        <span>密码</span>
+        <input id="login-password" class="input" type="password" autocomplete="current-password">
+      </label>
+      <button id="btn-do-login" class="btn primary" type="button">登录</button>
+    </div>
+
+    <div id="auth-register" class="auth-pane hidden">
+      <label class="field">
+        <span>邮箱</span>
+        <input id="reg-email" class="input" type="email" autocomplete="email" placeholder="123456789@qq.com">
+      </label>
+      <div class="ai-row">
+        <button id="btn-send-code" class="btn tiny" type="button">获取验证码</button>
+        <input id="reg-code" class="input code-input" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="6 位验证码">
+      </div>
+      <p class="auth-note" id="code-note"></p>
+      <label class="field">
+        <span>设置密码（至少 6 位）</span>
+        <input id="reg-password" class="input" type="password" autocomplete="new-password">
+      </label>
+      <label class="field">
+        <span>再输一次密码</span>
+        <input id="reg-password2" class="input" type="password" autocomplete="new-password">
+      </label>
+      <button id="btn-do-register" class="btn primary" type="button">完成注册并登录</button>
+    </div>
+
+    <p id="auth-status" class="ai-status"></p>
+
+    <p class="welcome-foot">说明：本站是纯静态页面，没有服务器，所以账号和验证码都只在这台浏览器里——换电脑、换浏览器或清缓存就没了，验证码是页面本地生成的，不会真的发邮件。密码用浏览器自带的加密接口加盐存储，不保存明文。</p>
+  </div>
+</div>
+
 <script src="assets/vendor/jscpp.js"></script>
 <script src="assets/js/analyzer.js"></script>
 <script src="assets/js/runner.js"></script>
 <script src="assets/js/problems.js"></script>
 <script src="assets/js/prompt.js"></script>
+<script src="assets/js/account.js"></script>
+<script src="assets/js/aiclient.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
 </html>

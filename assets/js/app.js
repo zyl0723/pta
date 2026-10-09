@@ -9,7 +9,7 @@
   var runner = window.PTARunner;
   var problems = window.PTAProblems || [];
 
-  var state = { findings: [], timer: null, currentProblem: null, lastRun: null };
+  var state = { findings: [], timer: null, currentProblem: null, lastRun: null, aiRun: null };
 
   /* 会打开的 AI 网站。prefill 为 true 表示该站点支持用网址带上提问内容。 */
   var AI_TARGETS = {
@@ -20,7 +20,7 @@
     tongyi: { label: "通义", url: "https://www.tongyi.com/" },
   };
 
-  var HINT_WEB = "下面这段就是发给 AI 的内容，已经自动复制过。去刚打开的页面按 Ctrl + V 粘贴发送即可；如果没复制成功，就手动全选这段文字复制。";
+  var HINT_WEB = "下面这段就是发给 AI 的内容。想直接在这里出结果就点「在本站生成」；想用你自己的 AI 网页，就点「复制提示词」再粘贴过去。";
 
   var SEV = {
     error: { label: "错误", cls: "sev-error", mark: "✖", hint: "这样写编译器一定会报错" },
@@ -43,6 +43,8 @@
     fillProblemSelect();
     bindEvents();
     initWelcome();
+    loadAiConfig();
+    refreshAccountUI();
     refreshGutter();
     analyzeNow();
   }
@@ -105,6 +107,25 @@
         setAiStatus(ok ? "已复制到剪贴板。" : "复制失败：请手动全选下面的提示词。");
       });
     });
+
+    /* 账号：登录 / 注册 / 退出 */
+    $("btn-account").addEventListener("click", function () { openAuth("login"); });
+    $("btn-logout").addEventListener("click", doLogout);
+    $("btn-auth-x").addEventListener("click", closeAuth);
+    $("auth").addEventListener("click", function (e) { if (e.target === $("auth")) closeAuth(); });
+    $("tab-login").addEventListener("click", function () { switchAuthTab("login"); });
+    $("tab-register").addEventListener("click", function () { switchAuthTab("register"); });
+    $("btn-send-code").addEventListener("click", sendRegCode);
+    $("btn-do-login").addEventListener("click", doLogin);
+    $("btn-do-register").addEventListener("click", doRegister);
+
+    /* 自带 API Key：设置与直接生成 */
+    $("btn-ai-setup").addEventListener("click", function () { toggleAiSetup(); });
+    $("ai-preset").addEventListener("change", applyPreset);
+    $("btn-ai-models").addEventListener("click", pullModels);
+    $("btn-ai-save").addEventListener("click", saveAiConfig);
+    $("btn-ai-run").addEventListener("click", runAi);
+    $("btn-ai-stop").addEventListener("click", stopAi);
   }
 
   /* ---------- 进站提示弹窗：勾了「不再提示」就记在本机，下次直接不弹 ---------- */
@@ -162,6 +183,7 @@
   }
 
   function showPrompt(kind) {
+    if (!requireLogin()) return;
     if (!needProblem() || !window.PTAPrompt) return;
     var ctx = {
       problem: $("problem-text").value,
@@ -184,11 +206,288 @@
     $("ai-hint").textContent = HINT_WEB;
     copyText(text, function (ok) {
       setAiStatus(ok
-        ? "提示词已复制，去 " + target.label + " 按 Ctrl + V 粘贴发送"
-        : "复制失败：请手动全选下面的提示词复制");
+        ? "提示词已复制。想在这里直接出结果就点「在本站生成」；想去网站上问，就把它粘到 " + target.label + "。"
+        : "复制失败：请手动全选下面的提示词复制。");
     });
-    openTarget(target, text);
+    /* 已经配好自己 API 的人，多半想在这里直接出结果，就别再弹新窗口了 */
+    if (!hasAiConfig()) openTarget(target, text);
+    updateRunNote();
     $("panel-ai").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  /* ---------- 账号：本机注册 / 登录（实现见 assets/js/account.js） ---------- */
+  function accountApi() { return window.PTAAccount || null; }
+
+  function setAuthStatus(text) {
+    var el = $("auth-status");
+    if (el) el.textContent = text == null ? "" : text;
+  }
+
+  function requireLogin() {
+    var acc = accountApi();
+    if (acc && acc.isLoggedIn()) return true;
+    openAuth("login");
+    setAuthStatus("「答案与解析」和「练习」要先登录才能用。注册只要一步，登录一次以后打开这个网址就不用再登了。");
+    return false;
+  }
+
+  function openAuth(tab) {
+    if (!$("auth")) return;
+    switchAuthTab(tab || "login");
+    setAuthStatus("");
+    $("auth").classList.remove("hidden");
+  }
+
+  function closeAuth() {
+    if ($("auth")) $("auth").classList.add("hidden");
+  }
+
+  function switchAuthTab(tab) {
+    var isReg = tab === "register";
+    $("tab-login").classList[isReg ? "remove" : "add"]("active");
+    $("tab-register").classList[isReg ? "add" : "remove"]("active");
+    $("auth-login").classList[isReg ? "add" : "remove"]("hidden");
+    $("auth-register").classList[isReg ? "remove" : "add"]("hidden");
+    setAuthStatus("");
+  }
+
+  function refreshAccountUI() {
+    var acc = accountApi();
+    var me = acc && acc.current();
+    $("account-label").textContent = me ? me.email : "";
+    $("account-label").classList[me ? "remove" : "add"]("hidden");
+    $("btn-account").classList[me ? "add" : "remove"]("hidden");
+    $("btn-account").textContent = me ? "切换账号" : "登录";
+    $("btn-logout").classList[me ? "remove" : "add"]("hidden");
+  }
+
+  function sendRegCode() {
+    var acc = accountApi();
+    if (!acc) return;
+    acc.sendCode($("reg-email").value).then(function (code) {
+      $("reg-code").value = "";
+      $("code-note").textContent = "本机模式：没有服务器，验证码不会发邮件，就显示在这里 → " + code + "（10 分钟内有效）";
+      setAuthStatus("");
+    }, function (err) {
+      $("code-note").textContent = "";
+      setAuthStatus(err.message);
+    });
+  }
+
+  function afterAuth(okText, email) {
+    closeAuth();
+    refreshAccountUI();
+    updateRunNote();
+    $("panel-ai").classList.remove("hidden");
+    setAiStatus(okText + email + "。");
+  }
+
+  function doLogin() {
+    var acc = accountApi();
+    if (!acc) return;
+    setAuthStatus("正在登录…");
+    acc.login({ email: $("login-email").value, password: $("login-password").value }).then(function (r) {
+      $("login-password").value = "";
+      setAuthStatus("");
+      afterAuth("已登录：", r.email);
+    }, function (err) {
+      setAuthStatus(err.message);
+    });
+  }
+
+  function doRegister() {
+    var acc = accountApi();
+    if (!acc) return;
+    setAuthStatus("正在注册…");
+    acc.register({
+      email: $("reg-email").value,
+      password: $("reg-password").value,
+      confirm: $("reg-password2").value,
+      code: $("reg-code").value
+    }).then(function (r) {
+      $("reg-password").value = "";
+      $("reg-password2").value = "";
+      $("reg-code").value = "";
+      $("code-note").textContent = "";
+      setAuthStatus("");
+      afterAuth("注册成功，已登录：", r.email);
+    }, function (err) {
+      setAuthStatus(err.message);
+    });
+  }
+
+  function doLogout() {
+    var acc = accountApi();
+    if (acc) acc.logout();
+    refreshAccountUI();
+    updateRunNote();
+    setAiStatus("已退出登录。AI 模块需要重新登录才能用。");
+  }
+
+  /* ---------- 自带 API Key：配置与在本站直接生成 ---------- */
+  var AI_CFG_KEY = "pta-ai-config";
+  var AI_KEY_KEY = "pta-ai-key";
+  var aiKeyMemory = "";
+
+  function lsGet(key) {
+    try { return window.localStorage ? window.localStorage.getItem(key) : null; } catch (err) { return null; }
+  }
+  function lsSet(key, val) {
+    try { if (window.localStorage) window.localStorage.setItem(key, val); } catch (err) { /* 存不了就算 */ }
+  }
+  function lsDel(key) {
+    try { if (window.localStorage) window.localStorage.removeItem(key); } catch (err) { /* 无所谓 */ }
+  }
+
+  function aiConfig() {
+    var cfg = null;
+    try { cfg = JSON.parse(lsGet(AI_CFG_KEY) || "null"); } catch (err) { cfg = null; }
+    if (!cfg || typeof cfg !== "object") cfg = {};
+    return {
+      preset: cfg.preset || "deepseek",
+      base: cfg.base || "",
+      model: cfg.model || "",
+      remember: !!cfg.remember
+    };
+  }
+
+  function aiKey() {
+    if (aiKeyMemory) return aiKeyMemory;
+    return aiConfig().remember ? (lsGet(AI_KEY_KEY) || "") : "";
+  }
+
+  function hasAiConfig() {
+    var c = aiConfig();
+    return !!(c.base && c.model && aiKey());
+  }
+
+  function loadAiConfig() {
+    if (!$("ai-preset")) return;
+    var c = aiConfig();
+    var presets = (window.PTAAI && window.PTAAI.PRESETS) || {};
+    $("ai-preset").value = presets[c.preset] ? c.preset : "custom";
+    $("ai-base").value = c.base || (presets[c.preset] ? presets[c.preset].base : "");
+    $("ai-model").value = c.model;
+    $("chk-ai-remember").checked = c.remember;
+    if (c.remember) $("ai-key").value = lsGet(AI_KEY_KEY) || "";
+    updateRunNote();
+  }
+
+  function applyPreset() {
+    var name = $("ai-preset").value;
+    var p = (window.PTAAI && window.PTAAI.PRESETS) ? window.PTAAI.PRESETS[name] : null;
+    if (!p || name === "custom") { updateRunNote(); return; }
+    $("ai-base").value = p.base;
+    $("ai-model").value = p.model;
+    updateRunNote();
+  }
+
+  function saveAiConfig() {
+    var p = {
+      preset: $("ai-preset").value,
+      base: $("ai-base").value.trim(),
+      model: $("ai-model").value.trim(),
+      remember: $("chk-ai-remember").checked
+    };
+    if (!p.base) { setAiStatus("先填 API 地址，例如 https://api.deepseek.com/v1"); return; }
+    if (!p.model) { setAiStatus("先填模型名，例如 deepseek-chat；不知道模型名就点「拉取模型」。"); return; }
+    var key = $("ai-key").value.trim();
+    if (!key) { setAiStatus("先填 API Key（在你所用服务的后台申请）。"); return; }
+
+    lsSet(AI_CFG_KEY, JSON.stringify(p));
+    if (p.remember) lsSet(AI_KEY_KEY, key); else lsDel(AI_KEY_KEY);
+    aiKeyMemory = p.remember ? "" : key;
+    setAiStatus("已保存。将要请求：" + window.PTAAI.chatEndpoint(p.base));
+    updateRunNote();
+  }
+
+  function toggleAiSetup(force) {
+    var box = $("ai-setup-box");
+    if (!box) return;
+    var show = (typeof force === "boolean") ? force : box.classList.contains("hidden");
+    box.classList[show ? "remove" : "add"]("hidden");
+    $("btn-ai-setup").textContent = show ? "收起设置" : "接入我自己的 AI";
+  }
+
+  function pullModels() {
+    var base = $("ai-base").value.trim();
+    var key = $("ai-key").value.trim() || aiKey();
+    if (!base) { setAiStatus("先填 API 地址。"); return; }
+    setAiStatus("正在拉取模型列表…");
+    window.PTAAI.listModels({ base: base, key: key }).then(function (list) {
+      $("ai-model-list").innerHTML = list.map(function (m) {
+        return '<option value="' + esc(m) + '"></option>';
+      }).join("");
+      if (!list.length) { setAiStatus("这个服务没返回模型列表，手动填模型名吧。"); return; }
+      if (!$("ai-model").value) $("ai-model").value = list[0];
+      setAiStatus("拉到 " + list.length + " 个模型，点「模型」输入框就能挑。");
+    }, function (err) {
+      setAiStatus(window.PTAAI.explain(err));
+    });
+  }
+
+  function updateRunNote() {
+    var note = $("ai-run-note");
+    if (!note) return;
+    var acc = accountApi();
+    if (!acc || !acc.isLoggedIn()) { note.textContent = "先去顶栏登录。"; return; }
+    note.textContent = hasAiConfig()
+      ? "将发往：" + window.PTAAI.chatEndpoint(aiConfig().base)
+      : "先在上面填好 API 地址、密钥和模型。";
+  }
+
+  function finishAiRun() {
+    state.aiRun = null;
+    $("btn-ai-run").classList.remove("hidden");
+    $("btn-ai-stop").classList.add("hidden");
+  }
+
+  function runAi() {
+    var acc = accountApi();
+    if (!acc || !acc.isLoggedIn()) { requireLogin(); return; }
+    var text = $("prompt-out").value;
+    if (!text) { setAiStatus("先点上面的「生成答案与解析」或「生成相似练习题」，把要问的内容准备好。"); return; }
+    var c = aiConfig();
+    var key = aiKey();
+    if (!c.base || !c.model || !key) {
+      toggleAiSetup(true);
+      setAiStatus("还没配好：需要 API 地址、API Key 和模型名，填完点「保存并检测」。");
+      return;
+    }
+    if (state.aiRun) state.aiRun.cancel();
+
+    $("ai-answer-wrap").classList.remove("hidden");
+    $("ai-answer").value = "";
+    $("btn-ai-run").classList.add("hidden");
+    $("btn-ai-stop").classList.remove("hidden");
+    setAiStatus("正在请求 " + c.model + "…");
+
+    state.aiRun = window.PTAAI.chat({
+      base: c.base,
+      key: key,
+      model: c.model,
+      prompt: text,
+      onDelta: function (d, all) {
+        var out = $("ai-answer");
+        out.value = all;
+        out.scrollTop = out.scrollHeight;
+      },
+      onDone: function () {
+        finishAiRun();
+        setAiStatus("生成完毕（模型：" + c.model + "）。");
+      },
+      onError: function (err) {
+        finishAiRun();
+        setAiStatus(window.PTAAI.explain(err));
+      }
+    });
+  }
+
+  function stopAi() {
+    if (state.aiRun) { state.aiRun.cancel(); state.aiRun = null; }
+    $("btn-ai-run").classList.remove("hidden");
+    $("btn-ai-stop").classList.add("hidden");
+    setAiStatus("已停止。");
   }
 
   function openTarget(target, text) {
