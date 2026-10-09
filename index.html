@@ -106,16 +106,9 @@
 
       <div class="ai-row">
         <span class="ai-label">答案与解析</span>
-        <select id="ai-target" class="select select-tiny">
-          <option value="chatgpt">ChatGPT</option>
-          <option value="deepseek">DeepSeek</option>
-          <option value="kimi">Kimi</option>
-          <option value="doubao">豆包</option>
-          <option value="tongyi">通义</option>
-        </select>
         <button id="btn-answer" class="btn tiny primary">生成答案与解析</button>
       </div>
-      <p class="ai-hint">粘好上面的题目后点这个按钮：页面会按<b>你的题目 + 你的代码 + 错误点</b>拼好一段提问。登录后二选一：<b>① 在本站生成</b>——用你自己填的 API Key 直接出结果（会给出每行带注释的答案和容易出错的地方）；<b>② 复制提示词</b>——去你自己的 AI 网站按 Ctrl + V 粘贴发送。<b>本站不提供 AI、不经手中转、也不替你付任何费用。</b></p>
+      <p class="ai-hint">粘好上面的题目后点这个按钮：页面会按<b>你的题目 + 你的代码 + 错误点</b>拼好一段提问。登录后二选一：<b>① 在本站生成</b>——先在下面「API」模块里填好自己的 API，再点这个按钮直接出结果；<b>② 复制提示词</b>——复制下来，粘到你自己的 AI 网站去问。<b>本站不提供 AI、不经手中转、也不替你付任何费用。</b></p>
 
       <label class="field">
         <span>应用修改：把 PTA 提交后给出的批改提示原文粘进来</span>
@@ -150,52 +143,60 @@
       <label class="check"><input type="checkbox" id="chk-practice-answer"> 连参考答案一起给（不勾选＝先只出题，等我做完再让 AI 批改）</label>
     </div>
 
+    <div id="panel-api" class="panel api-panel">
+      <div class="panel-head">
+        <h2>API</h2>
+        <div class="panel-actions"><span class="dim">填一次就记住，之后直接在本站出结果</span></div>
+      </div>
+
+      <div class="ai-row">
+        <span class="ai-label">服务商</span>
+        <select id="ai-preset" class="select select-tiny">
+          <option value="deepseek">DeepSeek</option>
+          <option value="openai">OpenAI</option>
+          <option value="tongyi">通义千问</option>
+          <option value="moonshot">Kimi</option>
+          <option value="zhipu">智谱 GLM</option>
+          <option value="custom">自定义（OpenAI 兼容）</option>
+        </select>
+        <span class="ai-label">API 地址</span>
+        <input id="ai-base" class="input url-input" spellcheck="false" autocomplete="off" placeholder="https://api.deepseek.com/v1">
+        <button id="btn-ai-models" class="btn tiny" type="button">拉取模型</button>
+      </div>
+
+      <div class="ai-row">
+        <span class="ai-label">API Key</span>
+        <input id="ai-key" class="input key-input" type="password" spellcheck="false" autocomplete="off" placeholder="粘贴你申请到的 Key">
+        <label class="check inline-check"><input type="checkbox" id="chk-ai-remember"> 记住密钥（存本机，下次不用重填）</label>
+      </div>
+
+      <div class="ai-row">
+        <span class="ai-label">模型</span>
+        <input id="ai-model" class="input model-input" list="ai-model-list" spellcheck="false" autocomplete="off" placeholder="deepseek-chat">
+        <datalist id="ai-model-list"></datalist>
+        <button id="btn-ai-save" class="btn tiny primary" type="button">保存并检测</button>
+      </div>
+
+      <p class="ai-hint" id="ai-setup-note">密钥只保留在你自己的浏览器里（不勾「记住」就只用于这次）；请求由你的浏览器直接发往上面这个地址，本站不做中转、也不上传密钥。</p>
+      <p class="api-get">还没有 Key？去 DeepSeek 官网申请：<a class="api-link" href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener noreferrer">获取api</a></p>
+    </div>
+
     <div id="panel-ai" class="panel ai-panel hidden">
       <div class="panel-head">
         <h2>用 AI 出答案 / 出练习</h2>
         <div class="panel-actions">
-          <button id="btn-ai-setup" class="btn tiny">接入我自己的 AI</button>
           <button id="btn-copy-prompt" class="btn tiny">复制提示词</button>
         </div>
       </div>
       <div id="ai-status" class="ai-status">还没有生成。</div>
 
-      <div id="ai-setup-box" class="ai-setup hidden">
-        <div class="ai-row">
-          <span class="ai-label">服务商</span>
-          <select id="ai-preset" class="select select-tiny">
-            <option value="deepseek">DeepSeek</option>
-            <option value="openai">OpenAI</option>
-            <option value="tongyi">通义千问</option>
-            <option value="moonshot">Kimi</option>
-            <option value="zhipu">智谱 GLM</option>
-            <option value="custom">自定义（OpenAI 兼容）</option>
-          </select>
-          <span class="ai-label">API 地址</span>
-          <input id="ai-base" class="input url-input" spellcheck="false" autocomplete="off" placeholder="https://api.deepseek.com/v1">
-          <button id="btn-ai-models" class="btn tiny" type="button">拉取模型</button>
-        </div>
-        <div class="ai-row">
-          <span class="ai-label">API Key</span>
-          <input id="ai-key" class="input key-input" type="password" spellcheck="false" autocomplete="off" placeholder="只存在你自己浏览器里">
-          <label class="check inline-check"><input type="checkbox" id="chk-ai-remember"> 记住密钥（存本机，下次不用重填）</label>
-        </div>
-        <div class="ai-row">
-          <span class="ai-label">模型</span>
-          <input id="ai-model" class="input model-input" list="ai-model-list" spellcheck="false" autocomplete="off" placeholder="deepseek-chat">
-          <datalist id="ai-model-list"></datalist>
-          <button id="btn-ai-save" class="btn tiny primary" type="button">保存并检测</button>
-        </div>
-        <p class="ai-hint" id="ai-setup-note">密钥只保留在你自己的浏览器里（不勾「记住」就只用于这次）；请求由你的浏览器直接发往上面这个地址，本站不做中转、也不上传密钥。</p>
-      </div>
-
       <div class="ai-row">
         <button id="btn-ai-run" class="btn primary" type="button">在本站生成</button>
         <button id="btn-ai-stop" class="btn hidden" type="button">停止</button>
-        <span class="dim" id="ai-run-note">先在上面填好 API 地址、密钥和模型。</span>
+        <span class="dim" id="ai-run-note">先在「API」模块里填好地址、密钥和模型。</span>
       </div>
 
-      <p class="ai-hint" id="ai-hint">下面这段就是发给 AI 的内容。想直接在本站出结果就点「在本站生成」；想用你自己的 AI 网页，就点「复制提示词」再粘贴过去。</p>
+      <p class="ai-hint" id="ai-hint">下面这段就是发给 AI 的内容。想直接在这里出结果就点「在本站生成」；想用你自己的 AI 网页，就点「复制提示词」再粘贴过去。</p>
       <textarea id="prompt-out" class="prompt-out" readonly spellcheck="false"></textarea>
 
       <div id="ai-answer-wrap" class="hidden">

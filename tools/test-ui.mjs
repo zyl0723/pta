@@ -231,16 +231,16 @@ check("没有「本地 AI / Ollama」这类站点自带服务", !/value="local"/
 check("页面里没有任何内置密钥", !/sk-[A-Za-z0-9_-]{12,}/.test(html));
 check("API 地址由使用者填写，页面不写死服务地址", /id="ai-base"/.test(html) && !/value="https:\/\/api\./.test(html));
 check("密钥输入框不显示明文", /id="ai-key"[^>]*type="password"/.test(html));
-store["ai-target"].value = "chatgpt";
 store["problem-text"].value = "7-1 两数求和\n输入 a 和 b，输出 a + b。";
 store["btn-answer"].dispatch("click");
 check("“答案与解析”会拼好提示词并说明两种用法", /在本站生成/.test(store["ai-status"].textContent), store["ai-status"].textContent);
 
-console.log("=== 接入自己的 API（地址 / 密钥 / 模型） ===");
-check("面板里有接入入口与三个输入框", /id="ai-setup-box"/.test(html) && /id="ai-preset"/.test(html) && /id="ai-model"/.test(html));
+console.log("=== 「API」模块（地址 / 密钥 / 模型） ===");
+check("题目那边不再有选 AI 网站的下拉", !/id="ai-target"/.test(html) && !/chatgpt\.com/.test(html));
+check("多出一个独立的「API」模块", /id="panel-api"/.test(html) && /<h2>API<\/h2>/.test(html));
+check("模块里有服务商 / 地址 / 密钥 / 模型四个输入", /id="ai-preset"/.test(html) && /id="ai-base"/.test(html) && /id="ai-key"/.test(html) && /id="ai-model"/.test(html));
+check("模块下方有「获取api」链接指向 DeepSeek 官网", /href="https:\/\/platform\.deepseek\.com\/api_keys"/.test(html) && />获取api<\/a>/.test(html));
 check("密钥默认不写进本机存储", lsData.get("pta-ai-key") === undefined);
-store["btn-ai-setup"].dispatch("click");
-check("点「接入我自己的 AI」展开设置区", !store["ai-setup-box"].classList.contains("hidden"));
 store["ai-preset"].value = "deepseek";
 store["ai-preset"].dispatch("change");
 check("选预设后自动填好地址", store["ai-base"].value === "https://api.deepseek.com/v1", store["ai-base"].value);
@@ -291,6 +291,7 @@ check("进站时默认弹出提示", !store["welcome"].classList.contains("hidde
 check("弹窗有标题与「不再提示」勾选框", /id="welcome-title"/.test(html) && /id="chk-welcome-mute"/.test(html));
 check("弹窗有右上角关闭按钮", /id="btn-welcome-x"/.test(html));
 check("弹窗背景是粉色系、和页面同族", /\.welcome\s*\{[^}]*rgba\(150, 96, 120/.test(css) && /\.welcome-card\s*\{[^}]*#fdf7f9/.test(css));
+check("「获取api」链接是蓝色小字", /\.api-link\s*\{[^}]*color:\s*#2563eb[^}]*font-size:\s*11\.5px/.test(css));
 check("弹窗说明「不接 AI 也能用」", /不接 AI 也能用/.test(html));
 check("弹窗说明「只检查已经写好的代码」", /只检查你已经写好的代码/.test(html));
 check("弹窗说明想更聪明要自己有 AI 账号", /得你自己有 AI/.test(html) && /你自己账号/.test(html));

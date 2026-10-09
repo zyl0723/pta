@@ -11,15 +11,6 @@
 
   var state = { findings: [], timer: null, currentProblem: null, lastRun: null, aiRun: null };
 
-  /* 会打开的 AI 网站。prefill 为 true 表示该站点支持用网址带上提问内容。 */
-  var AI_TARGETS = {
-    chatgpt: { label: "ChatGPT", url: "https://chatgpt.com/?q=", prefill: true },
-    deepseek: { label: "DeepSeek", url: "https://chat.deepseek.com/" },
-    kimi: { label: "Kimi", url: "https://www.kimi.com/" },
-    doubao: { label: "豆包", url: "https://www.doubao.com/chat/" },
-    tongyi: { label: "通义", url: "https://www.tongyi.com/" },
-  };
-
   var HINT_WEB = "下面这段就是发给 AI 的内容。想直接在这里出结果就点「在本站生成」；想用你自己的 AI 网页，就点「复制提示词」再粘贴过去。";
 
   var SEV = {
@@ -120,7 +111,6 @@
     $("btn-do-register").addEventListener("click", doRegister);
 
     /* 自带 API Key：设置与直接生成 */
-    $("btn-ai-setup").addEventListener("click", function () { toggleAiSetup(); });
     $("ai-preset").addEventListener("change", applyPreset);
     $("btn-ai-models").addEventListener("click", pullModels);
     $("btn-ai-save").addEventListener("click", saveAiConfig);
@@ -200,17 +190,14 @@
       text = window.PTAPrompt.buildPractice(ctx);
     }
 
-    var target = AI_TARGETS[$("ai-target").value] || AI_TARGETS.chatgpt;
     $("prompt-out").value = text;
     $("panel-ai").classList.remove("hidden");
     $("ai-hint").textContent = HINT_WEB;
     copyText(text, function (ok) {
       setAiStatus(ok
-        ? "提示词已复制。想在这里直接出结果就点「在本站生成」；想去网站上问，就把它粘到 " + target.label + "。"
+        ? "提示词已复制。想在这里直接出结果就点「在本站生成」；想去网站上问，直接粘过去就行。"
         : "复制失败：请手动全选下面的提示词复制。");
     });
-    /* 已经配好自己 API 的人，多半想在这里直接出结果，就别再弹新窗口了 */
-    if (!hasAiConfig()) openTarget(target, text);
     updateRunNote();
     $("panel-ai").scrollIntoView({ behavior: "smooth", block: "center" });
   }
@@ -401,14 +388,6 @@
     updateRunNote();
   }
 
-  function toggleAiSetup(force) {
-    var box = $("ai-setup-box");
-    if (!box) return;
-    var show = (typeof force === "boolean") ? force : box.classList.contains("hidden");
-    box.classList[show ? "remove" : "add"]("hidden");
-    $("btn-ai-setup").textContent = show ? "收起设置" : "接入我自己的 AI";
-  }
-
   function pullModels() {
     var base = $("ai-base").value.trim();
     var key = $("ai-key").value.trim() || aiKey();
@@ -450,8 +429,8 @@
     var c = aiConfig();
     var key = aiKey();
     if (!c.base || !c.model || !key) {
-      toggleAiSetup(true);
-      setAiStatus("还没配好：需要 API 地址、API Key 和模型名，填完点「保存并检测」。");
+      setAiStatus("还没配好：先去上面的「API」模块填好 API 地址、API Key 和模型名，点「保存并检测」。");
+      $("panel-api").scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     if (state.aiRun) state.aiRun.cancel();
@@ -488,12 +467,6 @@
     $("btn-ai-run").classList.remove("hidden");
     $("btn-ai-stop").classList.add("hidden");
     setAiStatus("已停止。");
-  }
-
-  function openTarget(target, text) {
-    if (typeof window.open !== "function") return;
-    var url = target.prefill ? target.url + encodeURIComponent(text) : target.url;
-    try { window.open(url, "_blank", "noopener"); } catch (err) { /* 被浏览器拦截就只靠剪贴板 */ }
   }
 
   function fallbackCopy(text) {
