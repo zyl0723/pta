@@ -33,7 +33,12 @@
         <div class="panel-actions">
           <button id="btn-sample" class="btn tiny">载入示例</button>
           <button id="btn-clear" class="btn tiny">清空</button>
+          <button id="btn-recheck" class="btn tiny primary">二次检查</button>
         </div>
+      </div>
+
+      <div class="field-note mini">
+        <b>两种检查怎么选？</b><b>「立即检查」</b>用页面自带的规则找常见写法错误，不联网、不花额度，边打字边跑；<b>「二次检查」</b>是拿你在「答案与解析」里生成的那份答案当标准，用<b>你自己的 AI</b> 把你这段代码重新逐行对照检查一遍，结果会<b>覆盖右边「检查结果」</b>。<br>用「二次检查」要先做到两件事：① 右边「题目」框里填了题；② 已经生成过答案。而且<b>每次改完代码都要再点一次「二次检查」</b>才会用新代码重查——想回到本地静态检查，点一下「立即检查」就行。
       </div>
 
       <div class="editor" id="editor">
@@ -102,6 +107,17 @@
       <label class="check"><input type="checkbox" id="chk-practice-answer"> 连参考答案一起给（不勾选＝先只出题，等我做完再让 AI 批改）</label>
     </div>
 
+    <div id="panel-practice-out" class="panel practice-out hidden">
+      <div class="panel-head">
+        <h2>生成的练习题</h2>
+        <div class="panel-actions">
+          <span class="dim" id="practice-note">还没有生成。</span>
+          <button id="btn-copy-practice" class="btn tiny">复制全部</button>
+        </div>
+      </div>
+      <textarea id="practice-body" class="result-out" spellcheck="false" placeholder="点上面的「生成相似练习题」，配好 API 后点「在本站生成」，题目就显示在这里。点「复制全部」可以整段复制，拿去别的 AI 网站找答案。"></textarea>
+    </div>
+
     <div id="panel-api" class="panel api-panel">
       <div class="panel-head">
         <h2>API</h2>
@@ -154,6 +170,7 @@
       </div>
       <div id="summary" class="summary"></div>
       <div id="findings" class="findings"></div>
+      <pre id="recheck-out" class="recheck-out hidden"></pre>
     </div>
 
     <div class="panel subject">
@@ -194,7 +211,7 @@
 
     <div id="panel-ai" class="panel ai-panel hidden">
       <div class="panel-head">
-        <h2>用 AI 出答案 / 练习 / 翻报错</h2>
+        <h2>发给 AI 的内容（提示词）</h2>
         <div class="panel-actions">
           <button id="btn-copy-prompt" class="btn tiny">复制提示词</button>
         </div>
@@ -207,13 +224,19 @@
         <span class="dim" id="ai-run-note">先在「API」模块里填好地址、密钥和模型。</span>
       </div>
 
-      <p class="ai-hint" id="ai-hint">下面这段就是发给 AI 的内容。想直接在这里出结果就点「在本站生成」；想用你自己的 AI 网页，就点「复制提示词」再粘贴过去。</p>
+      <p class="ai-hint" id="ai-hint">下面这段就是发给 AI 的内容。想直接出结果就点「在本站生成」，答案会出现在右边「答案与解析」框、练习题会出现在左边「生成的练习题」框；想用你自己的 AI 网页，就点「复制提示词」再粘贴过去。</p>
       <textarea id="prompt-out" class="prompt-out" readonly spellcheck="false"></textarea>
+    </div>
 
-      <div id="ai-answer-wrap" class="hidden">
-        <div class="block-title">AI 的回答（来自你自己配置的服务）</div>
-        <textarea id="ai-answer" class="prompt-out" readonly spellcheck="false"></textarea>
+    <div id="panel-answer" class="panel answer-panel hidden">
+      <div class="panel-head">
+        <h2 id="answer-title">答案与解析</h2>
+        <div class="panel-actions">
+          <span class="dim" id="answer-note">还没有生成。</span>
+          <button id="btn-copy-answer" class="btn tiny">复制</button>
+        </div>
       </div>
+      <textarea id="answer-body" class="result-out" spellcheck="false" placeholder="点上面的「生成答案与解析」，配好 API 后点「在本站生成」，答案就显示在这里。也可以把你在别的 AI 网站问到的答案粘进来，再用它做「二次检查」。"></textarea>
     </div>
   </section>
 

@@ -284,6 +284,23 @@ pre.stdout {
 }
 .prompt-out:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
+/* ---------- 生成结果框（右栏「答案与解析」/ 左栏「生成的练习题」） ---------- */
+.result-out {
+  margin-top: 8px; width: 100%; min-height: 260px; resize: vertical;
+  font: 400 12.5px/20px var(--mono); padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--line-strong); background: #fffcfd; color: #3c465c; outline: none;
+}
+.result-out:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.result-out::placeholder { color: #b9a3ad; }
+.panel.answer-panel { border-color: var(--line-strong); }
+
+/* 二次检查的结果直接铺在「检查结果」面板里，覆盖原来的静态检查列表 */
+.recheck-out {
+  margin: 0; white-space: pre-wrap; word-break: break-word;
+  font: 400 12.5px/20px var(--mono); color: #3c465c;
+  background: #fffafc; border: 1px solid #eed7e0; border-radius: 8px; padding: 10px 12px;
+}
+
 /* ---------- 响应式 ---------- */
 @media (max-width: 1000px) {
   .layout { grid-template-columns: 1fr; }

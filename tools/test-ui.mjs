@@ -264,6 +264,70 @@ check("点「清除」后本机不再有密钥与配置", lsData.get("pta-ai-key
 check("点「清除」后输入框也清空", store["ai-key"].value === "" && store["ai-model"].value === "" && store["ai-base"].value === "");
 check("点「清除」有明确提示", /已清除/.test(store["ai-status"].textContent), store["ai-status"].textContent);
 
+console.log("=== 生成结果放在单独的模组框里（答案在右、练习在左） ===");
+check("右侧有独立的「答案与解析」框和复制按钮", /id="panel-answer"/.test(html) && /id="answer-body"/.test(html) && /id="btn-copy-answer"/.test(html));
+check("左侧有独立的「生成的练习题」框和复制按钮", /id="panel-practice-out"/.test(html) && /id="practice-body"/.test(html) && /id="btn-copy-practice"/.test(html));
+check("答案框在右栏、练习结果框在左栏", /class="col col-right"[\s\S]*?id="panel-answer"[\s\S]*?<\/section>/.test(html) && /class="col col-left"[\s\S]*?id="panel-practice-out"[\s\S]*?id="panel-api"/.test(html));
+check("生成答案时右侧答案框的标题正确", /id="answer-title"/.test(html));
+
+store["ai-preset"].value = "deepseek";
+store["ai-preset"].dispatch("change");
+store["ai-key"].value = "sk-test-1234567890";
+store["chk-ai-remember"].checked = true;
+store["btn-ai-save"].dispatch("click");
+
+const realChat = sandbox.PTAAI.chat;
+sandbox.PTAAI.chat = function (opts) {
+  opts.onDelta("d", "AI 写出来的正文内容");
+  opts.onDone();
+  return { cancel: function () {} };
+};
+
+store["problem-text"].value = "7-1 两数求和\n输入 a 和 b，输出 a + b。";
+store["answer-body"].value = "";
+store["btn-answer"].dispatch("click");
+check("点「生成答案与解析」后答案框标题是「答案与解析」", store["answer-title"].textContent === "答案与解析", store["answer-title"].textContent);
+store["btn-ai-run"].dispatch("click");
+check("AI 的答案写进右侧单独的答案框", store["answer-body"].value.indexOf("AI 写出来的正文内容") >= 0 && !store["panel-answer"].classList.contains("hidden"));
+
+store["btn-practice"].dispatch("click");
+store["btn-ai-run"].dispatch("click");
+check("AI 出的练习题写进左侧单独的练习题框", store["practice-body"].value.indexOf("AI 写出来的正文内容") >= 0 && !store["panel-practice-out"].classList.contains("hidden"));
+
+console.log("=== 二次检查：拿生成的答案重查代码，结果覆盖检查结果 ===");
+check("「你的代码」面板有二次检查按钮", /id="btn-recheck"/.test(html));
+check("「你的代码」面板顶部写明两种检查的区别", /两种检查怎么选/.test(html) && /每次改完代码都要再点一次/.test(html));
+check("检查结果面板里有二次检查的输出位", /id="recheck-out"/.test(html));
+
+alerts.length = 0;
+store["problem-text"].value = "";
+store["answer-body"].value = "";
+store["btn-recheck"].dispatch("click");
+check("没填题目时二次检查先提醒填题目", alerts.length > 0 && /题目/.test(alerts[0]), JSON.stringify(alerts));
+
+store["problem-text"].value = "7-1 两数求和\n输入 a 和 b，输出 a + b。";
+store["btn-recheck"].dispatch("click");
+check("有题目但没答案时提醒先生成答案", alerts.length > 1 && /答案/.test(alerts[1]), JSON.stringify(alerts));
+check("提醒后会把答案框显示出来", !store["panel-answer"].classList.contains("hidden"));
+
+store["answer-body"].value = "标准答案：scanf(\"%d %d\", &a, &b); printf(\"%d\", a + b);";
+store["prompt-out"].value = "";
+sandbox.PTAAI.chat = function (opts) { opts.onDelta("d", "第 3 行：变量 b 没有读入。\n第 9 行：输出格式不对。"); opts.onDone(); return { cancel: function () {} }; };
+store["btn-recheck"].dispatch("click");
+check("有题目和答案后拼出的二次检查提示词已发出", /第 3 行/.test(store["recheck-out"].textContent), store["recheck-out"].textContent.slice(0, 60));
+check("二次检查结果覆盖了原来的检查列表", !store["recheck-out"].classList.contains("hidden") && store["findings"].innerHTML === "");
+check("总结区标明这是 AI 的二次检查结果", /AI/.test(store["summary"].innerHTML), store["summary"].innerHTML.slice(0, 80));
+check("二次检查提示词要求对照答案逐行检查", /对照/.test(store["prompt-out"].value) && /标准答案/.test(store["prompt-out"].value));
+
+store.code.value = '#include <stdio.h>\nint main(){ return 0; }';
+store.code.dispatch("input");
+check("改了代码不会自动重查，只提示再点一次", /再点一次/.test(store["summary"].innerHTML) && /第 3 行/.test(store["recheck-out"].textContent));
+
+store["btn-check"].dispatch("click");
+check("点「立即检查」回到本地静态检查", store["recheck-out"].classList.contains("hidden") && store["findings"].innerHTML.length > 0);
+
+sandbox.PTAAI.chat = realChat;
+
 console.log("=== 进站提示弹窗 ===");
 const css = readFileSync(path.join(root, "assets/css/styles.css"), "utf8");
 check("进站时默认弹出提示", !store["welcome"].classList.contains("hidden"));

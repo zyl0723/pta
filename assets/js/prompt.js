@@ -107,10 +107,34 @@
     ].join("\n");
   }
 
+  /* 二次检查：拿已经生成好的答案当标准，让 AI 重新逐行检查我的代码 */
+  function buildRecheck(ctx) {
+    var c = ctx || {};
+    return [
+      "你是一位严格的 C 语言老师。下面这道题我已经有一份正确答案和解析了，请你把这份答案当作「标准」，把我写的代码重新逐行检查一遍。",
+      "",
+      block("题目", c.problem),
+      "",
+      block("标准答案与解析（用来对照）", c.answer),
+      "",
+      block("要被检查的代码（我写的）", c.code),
+      "",
+      block("PTA 提交后的批改提示（可能为空）", c.feedback),
+      "",
+      "【检查要求，请严格遵守】",
+      "1. 只针对我这份代码逐条列问题，每条写清「第几行」+「哪里不对」+「为什么错」+「应该改成什么」。",
+      "2. 重点比对标准答案的思路：我的写法在逻辑、边界情况、输入输出格式上，和它有没有不一致。",
+      "3. 如果我这段代码是对的，就直接说「代码正确」，再指出相比标准答案多余或可以简化的地方。",
+      "4. 不要把标准答案整份重复一遍，把它当参照，专注检查我的代码。",
+      "5. 全文用中文，条理清楚，别绕弯子。"
+    ].join("\n");
+  }
+
   window.PTAPrompt = {
     buildAnswer: buildAnswer,
     buildPractice: buildPractice,
     buildTranslate: buildTranslate,
+    buildRecheck: buildRecheck,
     findingsToText: findingsToText
   };
 })();

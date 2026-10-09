@@ -9,7 +9,7 @@
   var runner = window.PTARunner;
   var problems = window.PTAProblems || [];
 
-  var state = { findings: [], timer: null, currentProblem: null, lastRun: null, aiRun: null };
+  var state = { findings: [], timer: null, currentProblem: null, lastRun: null, aiRun: null, aiTarget: "answer", aiCheckMode: false, aiCheckStale: false };
 
   var HINT_WEB = "下面这段就是发给 AI 的内容。想直接在这里出结果就点「在本站生成」；想用你自己的 AI 网页，就点「复制提示词」再粘贴过去。";
 
@@ -45,6 +45,7 @@
 
     code.addEventListener("input", function () {
       refreshGutter();
+      if (state.aiCheckMode) { markRecheckStale(); return; }
       if (state.timer) clearTimeout(state.timer);
       state.timer = setTimeout(analyzeNow, 260);
     });
@@ -92,6 +93,13 @@
     $("btn-answer").addEventListener("click", function () { showPrompt("answer"); });
     $("btn-translate").addEventListener("click", function () { showPrompt("translate"); });
     $("btn-practice").addEventListener("click", function () { showPrompt("practice"); });
+    $("btn-recheck").addEventListener("click", runRecheck);
+    $("btn-copy-answer").addEventListener("click", function () {
+      copyResult($("answer-body"), "答案");
+    });
+    $("btn-copy-practice").addEventListener("click", function () {
+      copyResult($("practice-body"), "练习题");
+    });
     $("btn-copy-prompt").addEventListener("click", function () {
       var box = $("prompt-out");
       if (!box.value) return;
@@ -198,6 +206,15 @@
     }
 
     $("prompt-out").value = text;
+    state.aiTarget = kind;
+    if (kind === "practice") {
+      setOutNote("practice-note", "还没有生成。");
+      $("panel-practice-out").classList.remove("hidden");
+    } else {
+      $("answer-title").textContent = kind === "translate" ? "报错翻译" : "答案与解析";
+      setOutNote("answer-note", "还没有生成。");
+      $("panel-answer").classList.remove("hidden");
+    }
     $("panel-ai").classList.remove("hidden");
     $("ai-hint").textContent = HINT_WEB;
     copyText(text, function (ok) {
@@ -207,6 +224,89 @@
     });
     updateRunNote();
     $("panel-ai").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  /* ---------- 生成结果的展示区：答案在右栏、练习题在左栏、二次检查覆盖检查结果 ---------- */
+  function setOutNote(id, text) {
+    var el = $(id);
+    if (el) el.textContent = text;
+  }
+
+  function copyResult(box, name) {
+    if (!box || !box.value) { setAiStatus("还没有可复制的" + name + "。"); return; }
+    copyText(box.value, function (ok) {
+      setAiStatus(ok ? name + "已复制到剪贴板。" : "复制失败：请手动选中上面的" + name + "再复制。");
+    });
+  }
+
+  function outputFor(kind) {
+    if (kind === "practice") return { panel: $("panel-practice-out"), body: $("practice-body"), note: "practice-note" };
+    return { panel: $("panel-answer"), body: $("answer-body"), note: "answer-note" };
+  }
+
+  function aiKindLabel(kind) {
+    if (kind === "practice") return "练习题";
+    if (kind === "translate") return "翻译";
+    if (kind === "recheck") return "二次检查";
+    return "答案";
+  }
+
+  /* 二次检查：拿生成的答案当标准，让 AI 重新检查代码，结果覆盖「检查结果」面板 */
+  function runRecheck() {
+    var problem = $("problem-text").value.trim();
+    if (!problem) {
+      alert("「二次检查」要用你题目生成的那份答案来对照，所以先把 PTA 上的题目整段粘到右边「题目」框里，再生成一次答案。");
+      $("problem-text").focus();
+      return;
+    }
+    var answer = $("answer-body").value.trim();
+    if (!answer) {
+      alert("还没有可对照的答案。先点「生成答案与解析」并按提示生成答案（或把你自己 AI 给的答案粘进右边的「答案与解析」框），再点「二次检查」。");
+      $("panel-answer").classList.remove("hidden");
+      $("panel-answer").scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (!window.PTAPrompt) return;
+    var text = window.PTAPrompt.buildRecheck({
+      problem: $("problem-text").value,
+      code: $("code").value,
+      feedback: $("pta-feedback").value,
+      answer: $("answer-body").value,
+      findings: state.findings
+    });
+    $("prompt-out").value = text;
+    state.aiTarget = "recheck";
+    $("panel-ai").classList.remove("hidden");
+    $("ai-hint").textContent = HINT_WEB;
+    setAiStatus("准备用你生成的答案重新检查代码：配好 API 就点「在本站生成」。");
+    updateRunNote();
+    if (hasAiConfig()) {
+      runAi();
+    } else {
+      $("panel-ai").scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+
+  function beginRecheck() {
+    state.aiCheckMode = true;
+    state.aiCheckStale = false;
+    $("summary").className = "summary note";
+    $("summary").innerHTML = "正在用 AI 对照「答案与解析」重新检查你的代码…";
+    $("findings").innerHTML = "";
+    $("recheck-out").textContent = "";
+    $("recheck-out").classList.remove("hidden");
+  }
+
+  function markRecheckStale() {
+    state.aiCheckStale = true;
+    $("summary").className = "summary warn";
+    $("summary").innerHTML = "代码已经改动，下面的 AI 检查结果是改动前的。再点一次「二次检查」用新代码重查；想回到本地静态检查就点「立即检查」。";
+  }
+
+  function exitRecheck() {
+    state.aiCheckMode = false;
+    state.aiCheckStale = false;
+    $("recheck-out").classList.add("hidden");
   }
 
   /* ---------- 自带 API Key：配置与在本站直接生成 ---------- */
@@ -347,11 +447,22 @@
     }
     if (state.aiRun) state.aiRun.cancel();
 
-    $("ai-answer-wrap").classList.remove("hidden");
-    $("ai-answer").value = "";
+    var kind = state.aiTarget || "answer";
+    var label = aiKindLabel(kind);
+    var target;
+    if (kind === "recheck") {
+      beginRecheck();
+      target = { panel: null, body: $("recheck-out"), note: null, mode: "text" };
+    } else {
+      target = outputFor(kind);
+      target.mode = "value";
+      target.panel.classList.remove("hidden");
+      target.body.value = "";
+      setOutNote(target.note, "正在生成…");
+    }
     $("btn-ai-run").classList.add("hidden");
     $("btn-ai-stop").classList.remove("hidden");
-    setAiStatus("正在请求 " + c.model + "…");
+    setAiStatus("正在请求 " + c.model + "（" + label + "）…");
 
     state.aiRun = window.PTAAI.chat({
       base: c.base,
@@ -359,16 +470,29 @@
       model: c.model,
       prompt: text,
       onDelta: function (d, all) {
-        var out = $("ai-answer");
-        out.value = all;
-        out.scrollTop = out.scrollHeight;
+        if (target.mode === "text") {
+          target.body.textContent = all;
+        } else {
+          target.body.value = all;
+          target.body.scrollTop = target.body.scrollHeight;
+        }
       },
       onDone: function () {
         finishAiRun();
-        setAiStatus("生成完毕（模型：" + c.model + "）。");
+        if (target.note) setOutNote(target.note, "已生成（模型：" + c.model + "）");
+        if (kind === "recheck") {
+          $("summary").className = "summary note";
+          $("summary").innerHTML = "以下是用你生成的答案对照后，AI 给出的重新检查结果（模型：" + esc(c.model) + "）。";
+        }
+        setAiStatus("生成完毕（" + label + "，模型：" + c.model + "）。");
       },
       onError: function (err) {
         finishAiRun();
+        if (target.note) setOutNote(target.note, "生成失败");
+        if (kind === "recheck") {
+          $("summary").className = "summary warn";
+          $("summary").innerHTML = "二次检查没能完成，下面是已经收到的内容。可以再点一次「二次检查」，或点「立即检查」回到本地静态检查。";
+        }
         setAiStatus(window.PTAAI.explain(err));
       }
     });
@@ -378,6 +502,10 @@
     if (state.aiRun) { state.aiRun.cancel(); state.aiRun = null; }
     $("btn-ai-run").classList.remove("hidden");
     $("btn-ai-stop").classList.add("hidden");
+    if (state.aiTarget === "recheck") {
+      $("summary").className = "summary warn";
+      $("summary").innerHTML = "二次检查已停止，下面是已经收到的内容。再点一次「二次检查」可以重查，或点「立即检查」回到本地静态检查。";
+    }
     setAiStatus("已停止。");
   }
 
@@ -454,6 +582,7 @@
 
   /* ---------- 静态检查 ---------- */
   function analyzeNow() {
+    exitRecheck();
     var code = $("code").value;
     var result = { findings: [] };
     try {
