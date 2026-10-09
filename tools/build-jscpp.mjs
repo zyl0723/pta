@@ -78,6 +78,16 @@ const result = await esbuild.build({
   globalName: "JSCPP",
   target: "es2017",
   outfile: path.join(root, "assets/vendor/jscpp.js"),
+  banner: {
+    js: [
+      "/*!",
+      " * 本文件由 tools/build-jscpp.mjs 自动生成：内含第三方开源代码，并已针对本项目打补丁，请勿手工修改。",
+      " * 第三方组件：JSCPP 2.0.9 (MIT, Copyright (c) 2015 Felix Hao)，及其依赖 lodash、pegjs-util、printf（均为 MIT）。",
+      " * 完整许可文本见仓库根目录 THIRD-PARTY-NOTICES.md。",
+      " */",
+    ].join("\n"),
+  },
+  legalComments: "eof",
   alias: {
     util: path.join(root, "tools/shim/util.js"),
     stream: path.join(root, "tools/shim/stream.js"),
@@ -97,3 +107,11 @@ const result = await esbuild.build({
 
 const output = Object.entries(result.metafile.outputs)[0];
 console.log("构建完成:", output[0], Math.round(output[1].bytes / 1024) + " KB");
+
+const packages = new Set();
+for (const input of Object.keys(result.metafile.inputs)) {
+  const matched = input.replace(/\\/g, "/").match(/node_modules\/(@[^/]+\/[^/]+|[^/]+)\//);
+  if (matched) packages.add(matched[1]);
+}
+console.log("打包进产物的第三方包:", [...packages].sort().join(", "));
+console.log("（署名与许可信息见 THIRD-PARTY-NOTICES.md，请保持同步）");

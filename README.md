@@ -1,5 +1,7 @@
 # C 语言习题检查器
 
+> 作者：**zyl0723**（<https://github.com/zyl0723>）。本仓库自有代码版权归作者所有；用到的第三方组件（JSCPP 2.0.9、lodash 4.18.1、pegjs-util 1.4.21、printf 0.6.1，均为 MIT）许可见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
+
 一个纯前端网页工具，用来检查 PTA 平台上 C 语言基础题的代码。粘贴代码后，它会**直白地指出问题出在哪一行、为什么错、怎么改**，并且能**真的把代码跑起来**，把运行结果和题目要求的输出逐行对比。
 
 - 面向人群：初学 C 语言、在 PTA 上做题的学生。
@@ -73,7 +75,7 @@ npx serve .
 - `EOF` 未定义、`long long` / `%lld` 输出异常。
 - `scanf` 返回值语义（返回成功读入个数，EOF 返回 -1）。
 
-补丁源码在 `tools/patch/` 与 `tools/shim/`，打包脚本 `tools/build-jscpp.mjs`。遇到解释器不支持的写法，页面会明确说「无法运行」，不会给假结论。
+补丁源码在 `tools/patch/` 与 `tools/shim/`，打包脚本 `tools/build-jscpp.mjs`。产物 `assets/vendor/jscpp.js` 由脚本生成、带署名 banner，并在构建时自动列出打包进去的第三方包；完整清单与许可全文见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。遇到解释器不支持的写法，页面会明确说「无法运行」，不会给假结论。
 
 ### 重建引擎
 
@@ -122,3 +124,10 @@ tools/                  构建脚本、补丁、测试
 - 静态检查只覆盖「常见写法错误」，**不评判算法与逻辑是否正确**——逻辑要靠运行样例验证。
 - 解释器覆盖基础题常用语法和标准库，少数高级特性（如复杂指针、结构体嵌套、部分库函数）可能不支持，届时会明确提示无法运行。
 - 结果仅供参考，**最终以 PTA 判题为准**。
+
+## 作者与许可
+
+- 作者：**zyl0723**（<https://github.com/zyl0723>）。
+- 自有代码：页面（`index.html`、`assets/css/`、`assets/js/app.js`）、静态检查规则引擎（`assets/js/analyzer.js`）、运行与输出对比（`assets/js/runner.js`）、题库（`assets/js/problems.js`）、构建脚本与解释器补丁（`tools/`）、测试与文档，均由作者编写。
+- 自有代码目前未声明开源许可，保留所有权利。
+- 第三方组件随 `assets/vendor/jscpp.js` 分发（JSCPP 2.0.9、lodash 4.18.1、pegjs-util 1.4.21、printf 0.6.1，均为 MIT），版权归各自作者所有，许可全文见 THIRD-PARTY-NOTICES.md。
