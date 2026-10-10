@@ -51,7 +51,7 @@
           <button id="btn-sample" class="btn tiny">载入示例</button>
           <button id="btn-clear" class="btn tiny">清空</button>
           <button id="btn-recheck" class="btn tiny primary">二次检查</button>
-          <button id="btn-code-full" class="btn tiny pink" type="button" title="放大到全屏：编辑器铺满整屏，下面多一个能跑代码的终端">放大到全屏</button>
+      <button id="btn-code-full" class="btn tiny pink" type="button" title="放大到全屏：整屏都用来写代码；点「运行」会像 Dev-C++ 那样弹出终端窗口">放大到全屏</button>
         </div>
       </div>
 
@@ -77,29 +77,9 @@
       </div>
 
       <div id="lang-warn" class="field-note warn-note hidden">
-        当前语言不是 C：本机只装了 C 语言的检查规则和解释器，所以「立即检查」「运行并对比」和全屏终端里的运行先关掉了，不给你乱报错。想看答案、想让人帮你检查，用右边的「答案与解析」「二次检查」——拼好的提示词里已经写明用的是 <b id="lang-warn-name">这门语言</b>。
+        当前语言不是 C：本机只装了 C 语言的检查规则和解释器，所以「立即检查」「运行并对比」和终端窗口里的运行先关掉了，不给你乱报错。想看答案、想让人帮你检查，用右边的「答案与解析」「二次检查」——拼好的提示词里已经写明用的是 <b id="lang-warn-name">这门语言</b>。
       </div>
 
-      <section id="dev" class="dev hidden">
-        <div class="dev-bar">
-          <span class="dev-title">终端 · 运行检查</span>
-          <div class="dev-actions">
-            <button id="btn-dev-check" class="btn tiny" type="button">检查</button>
-            <button id="btn-dev-run" class="btn tiny primary" type="button">运行</button>
-            <button id="btn-dev-clear" class="btn tiny" type="button">清空终端</button>
-            <button id="btn-dev-exit" class="btn tiny pink" type="button">退出全屏</button>
-          </div>
-        </div>
-        <pre id="dev-out" class="dev-out"></pre>
-        <div id="dev-term" class="dev-term" aria-label="终端"></div>
-        <p class="dev-note" id="dev-term-note">终端里可以直接打字：回车＝把这行加进上面的输入，空着回车＝运行；退格可以删字，Ctrl+C 清掉当前这一行。这个终端用的是开源库 xterm.js（MIT）。</p>
-        <div class="dev-input-row">
-          <span class="dev-prompt">&gt;</span>
-          <input id="dev-input" class="input dev-input" spellcheck="false" autocomplete="off" placeholder="按题目样例一组一组输入，回车加一行；空着直接回车就运行（Ctrl+Enter 也是运行）">
-          <button id="btn-dev-send" class="btn tiny" type="button">加入输入</button>
-        </div>
-        <p class="dev-note">这里的输入和「用样例数据实测」里的「程序输入」是同一份内容：这里加的行会写进那个框，运行结果也会同时刷新那边。</p>
-      </section>
     </div>
 
     <div class="panel">
@@ -325,13 +305,32 @@
 
 <div id="dev-float" class="dev-float hidden" role="dialog" aria-label="终端">
   <div class="dev-float-bar">
-    <span class="dev-float-title">终端</span>
+    <span class="dev-float-title">终端 · 程序的输入输出</span>
     <div class="dev-float-actions">
-      <button id="btn-float-clear" class="btn tiny" type="button">清空</button>
       <button id="btn-float-close" class="btn tiny" type="button">收起</button>
     </div>
   </div>
-  <div id="dev-float-body" class="dev-float-body"></div>
+  <div id="dev-float-body" class="dev-float-body">
+    <section id="dev" class="dev">
+      <div class="dev-bar">
+        <span class="dev-title">运行检查</span>
+        <div class="dev-actions">
+          <button id="btn-dev-check" class="btn tiny" type="button">检查</button>
+          <button id="btn-dev-run" class="btn tiny primary" type="button">运行</button>
+          <button id="btn-dev-clear" class="btn tiny" type="button">清空</button>
+        </div>
+      </div>
+      <pre id="dev-out" class="dev-out"></pre>
+      <div id="dev-term" class="dev-term" aria-label="终端"></div>
+      <p class="dev-note" id="dev-term-note">终端里可以直接打字：回车＝加一行输入，空着回车＝再跑一次，退格删字，Ctrl+C 清掉当前行。按 Esc 或点「收起」关掉这个窗口。终端用的是开源库 xterm.js（MIT）。</p>
+      <div class="dev-input-row">
+        <span class="dev-prompt">&gt;</span>
+        <input id="dev-input" class="input dev-input" spellcheck="false" autocomplete="off" placeholder="按题目样例一组一组输入，回车加一行；空着直接回车就运行（Ctrl+Enter 也是运行）">
+        <button id="btn-dev-send" class="btn tiny" type="button">加入输入</button>
+      </div>
+      <p class="dev-note">这里输入的数据会优先用于运行；这里没输入，就用「用样例数据实测」里填的样例数据。两边只是读同一份数据，不会互相覆盖。</p>
+    </section>
+  </div>
 </div>
 
 <section id="cheatsheet" class="cheatsheet hidden">

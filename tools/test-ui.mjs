@@ -464,23 +464,31 @@ store["pta-feedback"].value = "测试点 3　段错误（Segmentation Fault）";
 store["btn-translate"].dispatch("click");
 check("翻译结果不走三段式，直接展开原始回答那一段", store["answer-parts"].classList.contains("hidden") && store["answer-raw-wrap"].open === true);
 
-console.log("=== 「你的代码」放大到全屏：小工作台 + 终端 ===");
+console.log("=== 「你的代码」放大到全屏：整屏写代码，运行时弹终端窗口 ===");
 store["stdin"].value = "";
 const key = (extra) => Object.assign({ key: "Enter", preventDefault() {} }, extra || {});
 check("「你的代码」面板有了 id 和放大到全屏按钮", /id="panel-code"/.test(html) && /class="panel code-panel"/.test(html) && /id="btn-code-full"/.test(html));
 check("全屏样式已定义", /\.panel\.code-panel\.fullscreen/.test(css));
-check("终端是页面里就有的（默认收起）", !/class="dev"/.test(html) && /id="dev" class="dev hidden"/.test(html));
-check("终端默认不显示", store["dev"].classList.contains("hidden"));
+check("全屏时编辑器撑满整屏（终端不再占位置）", /\.panel\.code-panel\.fullscreen \.editor \{ flex: 1 1 auto/.test(css) && !/code-panel\.fullscreen \.dev/.test(css));
+check("终端窗口是页面里就有的，默认收起", /id="dev-float" class="dev-float hidden"/.test(html) && /id="dev" class="dev"/.test(html));
+check("终端窗口默认不显示", store["dev-float"].classList.contains("hidden"));
+check("终端和「用样例数据实测」是两块独立的面板", html.indexOf('id="dev-float"') > html.indexOf('id="problem-select"'));
 
 store["btn-code-full"].dispatch("click");
 check("点一下进入全屏", store["panel-code"].classList.contains("fullscreen") && bodyClass.has("code-full-open"));
-check("全屏后终端出现", !store["dev"].classList.contains("hidden"));
+check("进全屏后终端窗口仍然收着（整屏留给代码）", store["dev-float"].classList.contains("hidden"));
 check("按钮变成「退出全屏」", store["btn-code-full"].textContent === "退出全屏", store["btn-code-full"].textContent);
-check("终端给了就绪提示", /终端已就绪/.test(store["dev-out"].textContent), store["dev-out"].textContent.slice(0, 40));
+check("全屏里点「立即检查」会把结果打进终端窗口并弹出来", (() => {
+  store["code"].value = '#include <stdio.h>\nint main(){ int a; scanf("%d", a); return 0; }';
+  store["code"].dispatch("input");
+  flush();
+  store["btn-check"].dispatch("click");
+  return !store["dev-float"].classList.contains("hidden") && /静态检查：发现/.test(store["dev-out"].textContent);
+})(), store["dev-out"].textContent.slice(0, 60));
 
 store["dev-input"].value = "3 4";
 store["btn-dev-send"].dispatch("click");
-check("「加入输入」把这一行写进程序输入框", store["stdin"].value === "3 4\n", JSON.stringify(store["stdin"].value));
+check("终端有自己的输入，不会去改「样例数据实测」的输入框", store["stdin"].value === "", JSON.stringify(store["stdin"].value));
 check("终端里回显了这一行", /> 3 4/.test(store["dev-out"].textContent));
 
 store["code"].value = '#include <stdio.h>\nint main(){ int a,b; scanf("%d %d",&a,&b); printf("%d\\n", a+b); return 0; }';
@@ -502,7 +510,7 @@ check("终端能直接跑 int main(void) 这种写法", /ok/.test(voidLog) && !/
 const log1 = store["dev-out"].textContent;
 store["dev-input"].value = "9 9";
 store["dev-input"].dispatch("keydown", key());
-check("输入框里回车等于加入一行", store["stdin"].value.endsWith("9 9\n") && store["dev-input"].value === "");
+check("输入框里回车等于加入一行", /> 9 9/.test(store["dev-out"].textContent) && store["dev-input"].value === "" && store["stdin"].value === "");
 const log2 = store["dev-out"].textContent;
 store["dev-input"].dispatch("keydown", key());
 check("空着回车等于直接运行", log2.length > log1.length && /\[结束\]/.test(store["dev-out"].textContent.slice(log2.length)));
@@ -519,13 +527,19 @@ check("终端里的「检查」会打印静态检查结果", /静态检查：发
 store["btn-dev-clear"].dispatch("click");
 check("「清空终端」清掉日志", store["dev-out"].textContent === "", store["dev-out"].textContent.slice(0, 40));
 
-store["btn-dev-exit"].dispatch("click");
-check("「退出全屏」恢复正常", !store["panel-code"].classList.contains("fullscreen") && store["dev"].classList.contains("hidden") && !bodyClass.has("code-full-open"));
+store["btn-float-close"].dispatch("click");
+check("点「收起」＝关掉终端窗口", store["dev-float"].classList.contains("hidden"));
+store["btn-code-full"].dispatch("click");
+check("「退出全屏」恢复正常", !store["panel-code"].classList.contains("fullscreen") && !bodyClass.has("code-full-open"));
 check("退出全屏按钮文案恢复", store["btn-code-full"].textContent === "放大到全屏", store["btn-code-full"].textContent);
 
+store["btn-dev-run"].dispatch("click");
+flush();
+document.dispatch("keydown", { key: "Escape" });
+check("开着终端窗口时，Esc 先收终端窗口", store["dev-float"].classList.contains("hidden"));
 store["btn-code-full"].dispatch("click");
 document.dispatch("keydown", { key: "Escape" });
-check("按 Esc 也能退出代码全屏", !store["panel-code"].classList.contains("fullscreen") && !bodyClass.has("code-full-open"));
+check("没开终端窗口时，Esc 退出代码全屏", !store["panel-code"].classList.contains("fullscreen") && !bodyClass.has("code-full-open"));
 
 console.log("=== 语言与难度：检查、答案、练习都按它们来 ===");
 check("「你的代码」右上角有语言下拉框（C / Python / C++ / Java）", /id="code-lang"/.test(html) && /<option value="c" selected>C 语言<\/option>/.test(html) && /<option value="python">Python<\/option>/.test(html) && /<option value="cpp">C\+\+<\/option>/.test(html) && /<option value="java">Java<\/option>/.test(html));
@@ -656,13 +670,16 @@ store["code"].dispatch("input");
 flush();
 store["stdin"].value = "";
 store["btn-code-full"].dispatch("click");
-check("进全屏时装上终端并渲染到 #dev-term", fakeTerm.openedHost === store["dev-term"] && store["dev"].classList.contains("term-on"));
-check("终端里有就绪提示和提示符", /终端已就绪/.test(fakeTerm.written) && /> $/.test(fakeTerm.written), JSON.stringify(fakeTerm.written.slice(-30)));
+store["btn-dev-run"].dispatch("click");
+flush();
+check("点「运行」才弹出终端窗口", !store["dev-float"].classList.contains("hidden"));
+check("弹出时才装上终端并渲染到 #dev-term", fakeTerm.openedHost === store["dev-term"] && store["dev"].classList.contains("term-on"));
+check("终端里有就绪提示和提示符", /终端就绪/.test(fakeTerm.written) && /> $/.test(fakeTerm.written), JSON.stringify(fakeTerm.written.slice(0, 40)));
 check("用上终端后原来的简易终端收起来（样式里控制）", /\.dev\.term-on \.dev-out/.test(css) && /\.dev\.term-on \.dev-input-row/.test(css));
 check("终端拿到一次焦点", fakeTerm.focusCount >= 1);
 
 fakeTerm.dataHandler("3 4\r");
-check("终端里打一行回车＝加进程序输入", store["stdin"].value === "3 4\n", JSON.stringify(store["stdin"].value));
+check("终端里打一行回车＝进终端自己的输入缓冲（不动样例数据那个框）", store["stdin"].value === "" && /> 3 4/.test(store["dev-out"].textContent), JSON.stringify(store["stdin"].value));
 check("终端里的这一行同时记进日志（供复制）", /> 3 4/.test(store["dev-out"].textContent));
 const beforeRun = store["dev-out"].textContent.length;
 fakeTerm.dataHandler("\r");
@@ -671,11 +688,11 @@ check("终端里空行回车＝运行并出结果", store["dev-out"].textContent
 fakeTerm.dataHandler("9");
 fakeTerm.dataHandler("\u007f\u007f");
 fakeTerm.dataHandler("5\r");
-check("终端里退格能删字（删干净后加 5 只留下 5）", store["stdin"].value.endsWith("5\n") && !store["stdin"].value.endsWith("95\n"), JSON.stringify(store["stdin"].value.slice(-8)));
-const beforeCtrlC = store["stdin"].value.length;
+check("终端里退格能删字（删干净后加 5 只留下 5）", /> 5/.test(store["dev-out"].textContent) && !/> 95/.test(store["dev-out"].textContent), store["dev-out"].textContent.slice(-40));
+const beforeCtrlC = store["dev-out"].textContent.length;
 fakeTerm.dataHandler("x\u0003");
-check("Ctrl+C 丢掉当前行、不写进输入", store["stdin"].value.length === beforeCtrlC);
-store["btn-dev-exit"].dispatch("click");
+check("Ctrl+C 丢掉当前行、不写进输入", !/> x/.test(store["dev-out"].textContent) && store["dev-out"].textContent.length >= beforeCtrlC);
+store["btn-float-close"].dispatch("click");
 
 /* 「清空终端」以前只清了 <pre>，xterm 那边没反应——这里盯住它 */
 fakeTerm.resetCount = 0;
@@ -704,23 +721,36 @@ store["stdin"].value = "";
 const movedTo = [];
 store["dev-float-body"].appendChild = function (el) { movedTo.push(el); };
 store["btn-float-close"].dispatch("click");
-check("平时（没进全屏）小黑框是收着的", store["dev-float"].classList.contains("hidden") && store["dev"].classList.contains("hidden"));
+check("平时（没进全屏）小黑框是收着的", store["dev-float"].classList.contains("hidden"));
 store["btn-dev-run"].dispatch("click");
 flush();
 check("平时点运行会弹出小黑框", !store["dev-float"].classList.contains("hidden"));
-check("终端被挪进小黑框里", movedTo.indexOf(store["dev"]) >= 0 && !store["dev"].classList.contains("hidden"));
-check("小黑框里有「清空」和「收起」两个按钮", /id="btn-float-clear"/.test(html) && /id="btn-float-close"/.test(html));
-store["btn-float-clear"].dispatch("click");
+check("终端就在小黑框里（页面结构上就放在里面）", /id="dev-float-body"[\s\S]{0,200}?id="dev"/.test(html));
+check("小黑框里有「清空」和「收起」两个按钮", /id="btn-dev-clear"/.test(html) && /id="btn-float-close"/.test(html));
+store["btn-dev-clear"].dispatch("click");
 check("小黑框上的「清空」一样管用", fakeTerm.resetCount === 2 && /终端已清空/.test(fakeTerm.written));
 store["btn-float-close"].dispatch("click");
-check("点「收起」关掉小黑框", store["dev-float"].classList.contains("hidden") && store["dev"].classList.contains("hidden"));
+check("点「收起」关掉小黑框", store["dev-float"].classList.contains("hidden"));
 store["btn-dev-run"].dispatch("click");
 flush();
 document.dispatch("keydown", { key: "Escape" });
 check("按 Esc 也能收起小黑框", store["dev-float"].classList.contains("hidden"));
 store["btn-code-full"].dispatch("click");
-check("进全屏时小黑框关掉、终端回到代码面板", store["dev-float"].classList.contains("hidden") && !store["dev"].classList.contains("hidden") && store["panel-code"].classList.contains("fullscreen"));
+check("进全屏时终端窗口自动关掉（整屏留给代码）", store["dev-float"].classList.contains("hidden") && store["panel-code"].classList.contains("fullscreen"));
 store["btn-code-full"].dispatch("click");
+
+/* 工具栏的「运行并对比」也要在终端窗口里留一份（和 Dev-C++ 一样能看到输出） */
+const beforeToolbar = store["dev-out"].textContent.length;
+store["code"].value = '#include <stdio.h>\nint main(){ int a,b; scanf("%d %d",&a,&b); printf("%d\\n", a+b); return 0; }';
+store["code"].dispatch("input");
+flush();
+store["stdin"].value = "8 9\n";
+store["btn-run"].dispatch("click");
+flush();
+const toolbarLog = store["dev-out"].textContent.slice(beforeToolbar);
+check("工具栏的「运行并对比」也会把结果写进终端窗口", /\[结束\]/.test(toolbarLog) && /\n17\n/.test(toolbarLog), toolbarLog.replace(/\n/g, " | ").slice(0, 90));
+check("它用完还是会把终端窗口弹出来", !store["dev-float"].classList.contains("hidden"));
+store["btn-float-close"].dispatch("click");
 
 delete sandbox.Xterm;
 

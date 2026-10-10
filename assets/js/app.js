@@ -70,6 +70,7 @@
     bindEvents();
     initWelcome();
     initHints();
+    devGreet();
     closeFloat(); /* 小黑框默认收起 */
     setCodeFull(false); /* 默认不是全屏：终端只应该出现在全屏里 */
     dropLegacyAccountData();
@@ -103,7 +104,7 @@
       }
     });
 
-    $("btn-check").addEventListener("click", analyzeNow);
+    $("btn-check").addEventListener("click", checkNow);
     $("btn-run").addEventListener("click", runNow);
     $("btn-check-run").addEventListener("click", function () { analyzeNow(); runNow(); });
     $("btn-clear").addEventListener("click", function () {
@@ -144,11 +145,9 @@
     });
     $("btn-answer-full").addEventListener("click", toggleAnswerFull);
     $("btn-code-full").addEventListener("click", toggleCodeFull);
-    $("btn-dev-exit").addEventListener("click", toggleCodeFull);
     $("btn-dev-check").addEventListener("click", devCheck);
     $("btn-dev-run").addEventListener("click", devRun);
     $("btn-dev-clear").addEventListener("click", clearDevLog);
-    $("btn-float-clear").addEventListener("click", clearDevLog);
     $("btn-float-close").addEventListener("click", closeFloat);
     $("btn-dev-send").addEventListener("click", addDevInput);
     $("dev-input").addEventListener("keydown", onDevInputKey);
@@ -160,8 +159,8 @@
     });
     document.addEventListener("keydown", function (e) {
       if (!e || e.key !== "Escape") return;
-      if (codeFullOn()) { toggleCodeFull(); return; }
       if (floatOpen()) { closeFloat(); return; }
+      if (codeFullOn()) { toggleCodeFull(); return; }
       if ($("panel-answer").classList.contains("fullscreen")) toggleAnswerFull();
     });
     $("btn-copy-prompt").addEventListener("click", function () {
@@ -534,6 +533,7 @@
   function clearDevLog() {
     devLog = [];
     termLine = "";
+    termInput = "";
     renderDevLog();
     if (term) {
       try { term.reset(); } catch (err) { /* 清不了就算了 */ }
@@ -569,27 +569,11 @@
     return !!(box && box.classList && !box.classList.contains("hidden"));
   }
 
-  function syncDevPlacement() {
-    var dev = $("dev");
-    var body = $("dev-float-body");
-    var anchor = $("lang-warn");
-    if (!dev) return;
-    var inFloat = floatOpen() && !codeFullOn();
-    if (inFloat) {
-      if (body && dev.parentNode !== body && typeof body.appendChild === "function") body.appendChild(dev);
-    } else if (anchor && anchor.parentNode && dev.parentNode !== anchor.parentNode) {
-      anchor.parentNode.insertBefore(dev, anchor);
-    }
-    dev.classList[codeFullOn() || inFloat ? "remove" : "add"]("hidden");
-    scheduleFit();
-  }
-
-  /* 点「运行」时把它弹出来；进全屏时收回去（终端跟着挪到代码面板里） */
+  /* 终端窗口：终端和「用样例数据实测」互相独立，只在点「运行」/「检查」时弹出来 */
   function openFloat() {
     var box = $("dev-float");
     if (!box) return;
     box.classList.remove("hidden");
-    syncDevPlacement();
     loadTerminal();
     scheduleFit();
     focusTerminal();
@@ -598,13 +582,19 @@
   function closeFloat() {
     var box = $("dev-float");
     if (box) box.classList.add("hidden");
-    syncDevPlacement();
   }
 
-  /* 跑完一次之后：全屏里就把终端拉到眼前，平时就把小黑框弹出来 */
+  /* 第一次给终端一句说明，让新手知道下一步点什么 */
+  function devGreet() {
+    if (devLog.length) return;
+    devLog.push("终端就绪：点「检查」先看有没有错误，没问题再点「运行」；要输入数据就在下面一行行敲，回车加一行，空行回车就运行。");
+    renderDevLog();
+  }
+
+  /* 跑完一次之后：把终端窗口拉到眼前 */
   function afterRun() {
-    if (codeFullOn()) { focusTerminal(); return; }
     openFloat();
+    focusTerminal();
   }
 
   function setCodeFull(on) {
@@ -615,17 +605,10 @@
     if (document.body && document.body.classList) {
       document.body.classList[on ? "add" : "remove"]("code-full-open");
     }
-    var dev = $("dev");
-    if (dev) dev.classList[on ? "remove" : "add"]("hidden");
     var btn = $("btn-code-full");
     if (btn) btn.textContent = on ? "退出全屏" : "放大到全屏";
-    syncDevPlacement();
-    if (!on) return;
-    if (!devLog.length) devWrite("终端已就绪：上面写代码，下面按题目样例输入数据，点「运行」看结果。");
-    loadTerminal();
-    if (term) { term.write("> "); focusTerminal(); return; }
-    var box = $("dev-input");
-    if (box && typeof box.focus === "function") box.focus();
+    scheduleFit();
+    if (on) $("code").focus();
   }
 
   function toggleCodeFull() { setCodeFull(!codeFullOn()); }
@@ -635,6 +618,7 @@
   var term = null;
   var termState = "idle"; /* idle | loading | ready | failed */
   var termLine = "";
+  var termInput = ""; /* 终端窗口自己的输入缓冲，不去改「用样例数据实测」里的「程序输入」 */
   var fitAddon = null;
   var fitTimer = null;
 
@@ -726,11 +710,10 @@
     }
   }
 
-  /* 终端里加一行输入：写进「用样例数据实测」的程序输入框，两边保持同一份内容 */
+  /* 终端里加一行输入：只加进终端自己的缓冲，不动「用样例数据实测」里的那个框 */
   function appendStdin(line) {
     if (!line) return;
-    var cur = $("stdin").value;
-    $("stdin").value = (cur === "" || /\n$/.test(cur) ? cur : cur + "\n") + line + "\n";
+    termInput += line + "\n";
     devWrite("> " + line, { skipTerm: true });
   }
 
@@ -771,6 +754,12 @@
     devWrite(lines.join("\n"));
   }
 
+  /* 工具栏上的「立即检查」：平时把结果写到右侧「检查结果」；全屏时右侧看不到，就把终端窗口弹出来写进去 */
+  function checkNow() {
+    if (codeFullOn()) { openFloat(); devCheck(); return; }
+    analyzeNow();
+  }
+
   function devRun() {
     if (curLang() !== "c") {
       devWrite("$ 运行\n本机只装了 C 语言的解释器：把语言换回 C 才能运行，或者用右边的「答案与解析」交给你自己的 AI。");
@@ -784,7 +773,9 @@
       devWrite("$ 运行\n先别跑：静态检查发现 " + gate.errors.length + " 个错误，先改掉。\n" + gateLines(gate.errors).join("\n"));
       return;
     }
-    var stdin = $("stdin").value;
+    /* 终端里输入过就用终端自己的数据；没输入才用「用样例数据实测」里的样例数据（只读不改） */
+    var fromTerm = termInput.trim() !== "";
+    var stdin = fromTerm ? termInput : $("stdin").value;
     var started = Date.now();
     var result;
     try {
@@ -794,9 +785,20 @@
     }
     result.elapsed = Date.now() - started;
 
+    devLogRun(result, stdin, gate, fromTerm);
+
+    /* 顺手把「用样例数据实测」那边的结果也刷新，退出全屏后看到的是同一份结果 */
+    state.lastRun = { result: result, expected: $("expected").value };
+    renderRunResult(state.lastRun);
+    afterRun();
+  }
+
+  /* 把一次运行的结果写成终端里的一块记录（终端里的「运行」和工具栏的「运行并对比」共用） */
+  function devLogRun(result, stdin, gate, fromTerm) {
     var lines = ["$ 运行"
-      + (gate.forced ? "（忽略 " + gate.errors.length + " 个错误强行运行）" : "")
-      + (stdin.trim() ? "（输入：" + stdin.replace(/\s+$/, "").replace(/\n/g, " / ") + "）" : "（没有输入）")];
+      + (gate && gate.forced ? "（忽略 " + gate.errors.length + " 个错误强行运行）" : "")
+      + (stdin.trim() ? "（输入：" + stdin.replace(/\s+$/, "").replace(/\n/g, " / ") + "）" : "（没有输入）")
+      + (!fromTerm && stdin.trim() ? "（用的是「用样例数据实测」里填的样例数据）" : "")];
     if (result.stdout) lines.push(result.stdout.replace(/\n+$/, ""));
     if (result.ok) {
       lines.push("[结束] 程序正常跑完，用时 " + result.elapsed + " 毫秒" + (result.stdout ? "" : "（程序没有输出）"));
@@ -806,11 +808,6 @@
       if (e.hint) lines.push("[建议] " + e.hint);
     }
     devWrite(lines.join("\n"));
-
-    /* 顺手把「用样例数据实测」那边的结果也刷新，退出全屏后看到的是同一份结果 */
-    state.lastRun = { result: result, expected: $("expected").value };
-    renderRunResult(state.lastRun);
-    afterRun();
   }
 
   function aiKindLabel(kind) {
@@ -1264,6 +1261,7 @@
       result.elapsed = Date.now() - started;
       state.lastRun = { result: result, expected: expected };
       renderRunResult(state.lastRun);
+      devLogRun(result, stdin, gate, false); /* 终端窗口里也留一份，和 Dev-C++ 一样 */
       if (gate.forced) $("run-status").textContent += "（忽略 " + gate.errors.length + " 个错误强行运行）";
       afterRun();
       btn.disabled = false;

@@ -381,10 +381,10 @@ body.answer-full-open { overflow: hidden; }
   max-height: none; overflow: auto; padding: 14px 18px 20px;
   display: flex; flex-direction: column;
 }
-.panel.code-panel.fullscreen .editor { height: 46vh; min-height: 220px; }
-.panel.code-panel.fullscreen .dev { flex: 1 1 auto; min-height: 0; }
-.panel.code-panel.fullscreen .dev-out { height: auto; flex: 1 1 auto; min-height: 150px; max-height: none; }
-.panel.code-panel.fullscreen .dev-term { height: auto; flex: 1 1 auto; min-height: 170px; }
+/* 全屏就是把整屏留给代码：说明文字收起来，编辑器撑满剩余高度，终端只在点「运行」时弹窗出现 */
+.panel.code-panel.fullscreen .editor { flex: 1 1 auto; height: auto; min-height: 240px; }
+.panel.code-panel.fullscreen .field-note,
+.panel.code-panel.fullscreen .toolbar-tip { display: none; }
 body.code-full-open { overflow: hidden; }
 
 .dev { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
@@ -410,7 +410,7 @@ body.code-full-open { overflow: hidden; }
 
 /* 运行时弹出的「小黑框」终端（平时浮在右下角；进全屏时终端会挪回代码面板） */
 .dev-float {
-  position: fixed; right: 16px; bottom: 16px; z-index: 900;
+  position: fixed; right: 16px; bottom: 16px; z-index: 1200; /* 要盖住全屏的代码面板（1000），否则全屏里看不到它 */
   width: min(560px, calc(100vw - 32px));
   background: #2f1e27; border: 1px solid #1f141b; border-radius: 10px;
   box-shadow: 0 16px 40px rgba(58, 33, 45, 0.42);
@@ -429,7 +429,10 @@ body.code-full-open { overflow: hidden; }
 .dev-float .dev-out { height: 200px; min-height: 140px; }
 .dev-float .dev-term { height: 200px; min-height: 140px; }
 .dev-float .dev-note { color: #d9c3cd; }
-.dev-float #btn-dev-exit { display: none; }
+.dev-float .dev-bar { margin-bottom: 8px; }
+.dev-float .dev-actions .btn { background: #4a2f3b; border-color: #5d3c4b; color: #f6e9ef; }
+.dev-float .dev-actions .btn:hover { background: #5b3a48; }
+.dev-float .dev-actions .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 
 /* ---------- 响应式 ---------- */
 @media (max-width: 1000px) {
