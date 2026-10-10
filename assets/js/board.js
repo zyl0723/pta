@@ -22,9 +22,9 @@
 
   var CONFIG = {
     repo: "zyl0723/pta",
-    repoId: "",            /* ← 到 https://giscus.app 复制 data-repo-id 填这里 */
-    category: "留言板",     /* ← 第 2 步新建的那个 Discussions 分类名 */
-    categoryId: "",        /* ← 到 https://giscus.app 复制 data-category-id 填这里 */
+    repoId: "R_kgDOVCSHPg", /* 仓库 ID（用 GitHub API 查到的，不用手填） */
+    category: "General",    /* 留言用的 Discussions 分类；以后想换成自己新建的分类，改这里 + 下面那行的 ID */
+    categoryId: "DIC_kwDOVCSHPs4DHff0",
     mapping: "specific",   /* 整个网站共用一条 Discussion（下面 term 给它起名） */
     term: "pta-board",     /* 这条 Discussion 的名字，改它等于换一块留言板 */
     reactions: "1",
