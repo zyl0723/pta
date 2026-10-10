@@ -70,6 +70,77 @@ function patchCstdio(rawSource) {
   return src;
 }
 
+/* C 里 f(void) 表示「没有参数」：解析器给出的是「有 void 说明符、没有名字」的参数节点。
+   原版 JSCPP 会把它当成错误抛出 (missing declarator for argument)，这里让参数列表直接跳过它。 */
+function patchInterpreter(rawSource) {
+  let src = rawSource.replace(/\r\n/g, "\n");
+  src = replaceOnce(src,
+    '                    if ((_param.Declarator == null)) {\n' +
+    '                        rt.raiseException("missing declarator for argument", _param);\n' +
+    '                    }',
+    '                    if ((_param.Declarator == null)) {\n' +
+    '                        if (_param.DeclarationSpecifiers.length === 1 && _param.DeclarationSpecifiers[0] === "void") {\n' +
+    '                            i++;\n' +
+    '                            continue;\n' +
+    '                        }\n' +
+    '                        rt.raiseException("missing declarator for argument", _param);\n' +
+    '                    }',
+    "f(void) 参数");
+  return src;
+}
+
+/* JSCPP 的 C 解析器是 PEG.js 生成的（lib/ast.js 解 C 源码、lib/prepast.js 解预处理指令），
+   其中「解码字符串转义」用的是 eval。页面用严格 CSP（script-src 'self'，没有 unsafe-eval），
+   浏览器会直接拦下 eval —— 结果是「运行」永远失败，只报一个看不懂的语法错误。
+   这里把这几处 eval 换成 tools/patch/parser-unescape.js 里不依赖 eval 的等价实现。 */
+function patchParserEval(rawSource, opts) {
+  let src = rawSource.replace(/\r\n/g, "\n");
+  const helper = patch("parser-unescape.js").replace(/\n+$/, "");
+
+  src = replaceOnce(src,
+    "    var options = arguments.length > 1 ? arguments[1] : {},",
+    helper + "\n    var options = arguments.length > 1 ? arguments[1] : {},",
+    "注入转义解码 helper");
+
+  src = replaceOnce(src,
+    "function(a, b) {return eval('\"' + a + b +'\"');}",
+    "function(a, b) {return peg$unescapeSimple(b);}",
+    "简单转义（\\n \\t 这一批）");
+
+  const octalFrom = [
+    '          var ret = "\\"";',
+    "          ret += a;",
+    "          ret += b;",
+    "          if (c)",
+    "            ret += c;",
+    "          if (d)",
+    "            ret += d;",
+    '          ret += "\\"";',
+    "          return eval(ret);",
+  ].join("\n");
+  src = replaceOnce(src, octalFrom,
+    '          return peg$unescapeOctal(b + (c || "") + (d || ""));',
+    "八进制转义");
+
+  src = replaceOnce(src,
+    "function(a, b) {return eval('\"'+a+b.join('')+'\"');}",
+    "function(a, b) {return peg$unescapeHex(b.join(''));}",
+    "十六进制转义");
+
+  if (opts && opts.universal) {
+    src = replaceOnce(src,
+      "function(a) { return eval('\"\\\\u' + a.join('') + '\"'); }",
+      "function(a) { return peg$unescapeUni(a.join('')); }",
+      "\\u 通用字符名");
+    src = replaceOnce(src,
+      "function(a, b) { return eval('\"\\\\U' + a.join('') + b.join('') + '\"'); }",
+      "function(a, b) { return peg$unescapeUni(a.join('') + b.join('')); }",
+      "\\U 通用字符名");
+  }
+
+  return src;
+}
+
 const result = await esbuild.build({
   entryPoints: [path.join(root, "tools/jscpp-entry.js")],
   bundle: true,
@@ -98,6 +169,18 @@ const result = await esbuild.build({
     setup(build) {
       build.onLoad({ filter: /includes[\\/]cstdio\.js$/ }, (args) => ({
         contents: patchCstdio(readFileSync(args.path, "utf8")),
+        loader: "js",
+      }));
+      build.onLoad({ filter: /lib[\\/]interpreter\.js$/ }, (args) => ({
+        contents: patchInterpreter(readFileSync(args.path, "utf8")),
+        loader: "js",
+      }));
+      build.onLoad({ filter: /lib[\\/]ast\.js$/ }, (args) => ({
+        contents: patchParserEval(readFileSync(args.path, "utf8"), { universal: true }),
+        loader: "js",
+      }));
+      build.onLoad({ filter: /lib[\\/]prepast\.js$/ }, (args) => ({
+        contents: patchParserEval(readFileSync(args.path, "utf8"), {}),
         loader: "js",
       }));
     },

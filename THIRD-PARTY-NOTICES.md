@@ -45,6 +45,8 @@
 3. 修正 `scanf` / `sscanf` 返回值语义（返回成功读入个数，读到 EOF 时返回 -1）；
 4. 将 `EOF` 由 `0` 改为 `-1`，并在全局作用域注册；
 5. 修正 printf 的占位符类型映射与参数校验，输出时去掉 `%lld` / `%llu` 的长度修饰符。
+6. 让空的 `void` 参数列表（`int main(void)`、`void f(void)`）可以正常定义和调用：原版会把它当成 "missing declarator for argument" 抛出，补丁在参数列表里跳过这个没有名字的 `void` 参数。
+7. 把 C 解析器（PEG.js 生成的 `lib/ast.js` / `lib/prepast.js`）里用 `eval` 解码字符串转义的地方，换成不依赖 `eval` 的等价实现（见 `tools/patch/parser-unescape.js`）。原因：本页面用严格 CSP（`script-src 'self'`，不含 `unsafe-eval`），浏览器会拦下 `eval`，导致「运行」功能在浏览器里直接失败。改动只影响转义的解码方式，转义结果按 C 语言语义给出。
 
 按 MIT 许可的要求，上述修改在此明确声明。
 

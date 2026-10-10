@@ -47,6 +47,7 @@ body.hints-off .panel .ai-hint,
 body.hints-off .panel .toolbar-tip,
 body.hints-off .panel .ans-tip,
 body.hints-off .panel .ans-sub,
+body.hints-off .panel .dev-note,
 body.hints-off .panel .panel-actions > span.dim:not([id]),
 body.hints-off .panel .ai-row > span.dim:not([id]) { display: none; }
 /* 这条是「AI 没按三段输出」的功能提醒，不跟着一起收 */
@@ -130,6 +131,8 @@ body.hints-off #answer-parse-hint { display: block; }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--accent); }
 .btn.ghost:hover { background: var(--accent-soft); }
 .btn.tiny { padding: 6px 10px; font-size: 12.5px; }
+.btn.pink { background: #f6dbe8; border-color: #e0b7cc; color: #6d2f49; }
+.btn.pink:hover { background: #efcbdd; }
 
 .toolbar { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .toolbar-tip { font-size: 12.5px; color: var(--muted); }
@@ -361,6 +364,33 @@ details.answer-raw[open] summary { margin-bottom: 8px; }
 }
 .panel.answer-panel.fullscreen .ans-body { max-height: none; min-height: 300px; }
 body.answer-full-open { overflow: hidden; }
+
+/* ---------- 「你的代码」放大到全屏：编辑器铺满，下面接一个能跑的终端 ---------- */
+.panel.code-panel.fullscreen {
+  position: fixed; inset: 0; z-index: 1000; margin: 0; border-radius: 0;
+  max-height: none; overflow: auto; padding: 14px 18px 20px;
+  display: flex; flex-direction: column;
+}
+.panel.code-panel.fullscreen .editor { height: 46vh; min-height: 220px; }
+.panel.code-panel.fullscreen .dev { flex: 1 1 auto; min-height: 0; }
+.panel.code-panel.fullscreen .dev-out { height: auto; flex: 1 1 auto; min-height: 150px; max-height: none; }
+body.code-full-open { overflow: hidden; }
+
+.dev { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.dev-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.dev-title { font-size: 13px; font-weight: 650; color: #5e2f47; }
+.dev-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dev-out {
+  margin: 0; min-height: 150px; height: 24vh; overflow: auto; resize: vertical;
+  font: 400 13px/21px var(--mono); color: #f6e9ef; background: #3a2630;
+  border: 1px solid #2e1d26; border-radius: 8px; padding: 10px 12px;
+  white-space: pre-wrap; word-break: break-word;
+}
+.dev-out:empty::before { content: "终端还没运行过。点上面的「运行」试试。"; color: #c8a5b4; }
+.dev-input-row { display: flex; align-items: center; gap: 8px; }
+.dev-prompt { flex: none; font: 400 13px/1 var(--mono); color: #6b5860; }
+.dev-input { flex: 1 1 auto; font-family: var(--mono); }
+.dev-note { margin: 0; font-size: 12.5px; line-height: 1.7; color: #5b4850; }
 
 /* ---------- 响应式 ---------- */
 @media (max-width: 1000px) {

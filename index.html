@@ -27,7 +27,7 @@
 <main class="layout">
 
   <section class="col col-left">
-    <div class="panel">
+    <div id="panel-code" class="panel code-panel">
       <div class="panel-head">
         <h2>你的代码</h2>
         <div class="panel-actions">
@@ -35,6 +35,7 @@
           <button id="btn-sample" class="btn tiny">载入示例</button>
           <button id="btn-clear" class="btn tiny">清空</button>
           <button id="btn-recheck" class="btn tiny primary">二次检查</button>
+          <button id="btn-code-full" class="btn tiny pink" type="button" title="放大到全屏：编辑器铺满整屏，下面多一个能跑代码的终端">放大到全屏</button>
         </div>
       </div>
 
@@ -54,6 +55,25 @@
         <button id="btn-check-run" class="btn ghost">检查 + 运行</button>
         <span class="toolbar-tip">边打字边检查，结果在右侧。</span>
       </div>
+
+      <section id="dev" class="dev hidden">
+        <div class="dev-bar">
+          <span class="dev-title">终端 · 运行检查</span>
+          <div class="dev-actions">
+            <button id="btn-dev-check" class="btn tiny" type="button">检查</button>
+            <button id="btn-dev-run" class="btn tiny primary" type="button">运行</button>
+            <button id="btn-dev-clear" class="btn tiny" type="button">清空终端</button>
+            <button id="btn-dev-exit" class="btn tiny pink" type="button">退出全屏</button>
+          </div>
+        </div>
+        <pre id="dev-out" class="dev-out"></pre>
+        <div class="dev-input-row">
+          <span class="dev-prompt">&gt;</span>
+          <input id="dev-input" class="input dev-input" spellcheck="false" autocomplete="off" placeholder="按题目样例一组一组输入，回车加一行；空着直接回车就运行（Ctrl+Enter 也是运行）">
+          <button id="btn-dev-send" class="btn tiny" type="button">加入输入</button>
+        </div>
+        <p class="dev-note">这里的输入和「用样例数据实测」里的「程序输入」是同一份内容：这里加的行会写进那个框，运行结果也会同时刷新那边。</p>
+      </section>
     </div>
 
     <div class="panel">
@@ -391,7 +411,7 @@ printf("%d", a);</pre>
     <h3>这个工具的边界</h3>
     <ul>
       <li>静态检查只覆盖「常见写法错误」，它不会替你做算法判断。逻辑对不对，要靠运行样例来验证。</li>
-      <li>运行使用的是一个内置的 C 解释器（JSCPP），覆盖基础题常用的语法和标准库函数，并已针对 scanf / printf / EOF / long long 等做了修正。</li>
+      <li>运行使用的是一个内置的 C 解释器（JSCPP），覆盖基础题常用的语法和标准库函数，并已针对 scanf / printf / EOF / long long / <code>int main(void)</code> 这几种情况做了修正。</li>
       <li>遇到它不支持的写法时，会明确告诉你「无法运行」，不会随便给你一个结论。</li>
       <li>所有计算都在你的浏览器里完成，代码不会上传到任何服务器。</li>
     </ul>

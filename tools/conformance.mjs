@@ -103,6 +103,18 @@ const cases = [
     c: H + 'int main(){ int a[3],i; for(i=0;i<6;i++) scanf("%d",&a[i]); printf("%d",a[0]); return 0; }' },
   { n: "int 溢出", i: "", e: "__ERROR__",
     c: H + 'int main(){ int a=100000; printf("%d", a*a); return 0; }' },
+  { n: "main 写成 (void)", i: "3 4\n", e: "7",
+    c: H + 'int main(void){ int a,b; scanf("%d %d",&a,&b); printf("%d", a+b); return 0; }' },
+  { n: "自定义函数写 (void) 参数", i: "", e: "hi3",
+    c: H + 'void hi(void){ printf("hi"); }\nint add(void){ return 3; }\nint main(void){ hi(); printf("%d", add()); return 0; }' },
+  { n: "字符串转义 \\101（八进制）", i: "", e: "65",
+    c: H + 'int main(){ printf("%d", "\\101"[0]); return 0; }' },
+  { n: "字符串转义 \\x41（十六进制）", i: "", e: "65",
+    c: H + 'int main(){ printf("%d", "\\x41"[0]); return 0; }' },
+  { n: "字符串转义 \\u0041", i: "", e: "65",
+    c: H + 'int main(){ printf("%d", "\\u0041"[0]); return 0; }' },
+  { n: "字符串转义 \\0 与 \\a", i: "", e: "0 7",
+    c: H + 'int main(){ printf("%d %d", "\\0"[0], "\\a"[0]); return 0; }' },
 ];
 
 let pass = 0, fail = 0;

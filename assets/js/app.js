@@ -35,6 +35,7 @@
     bindEvents();
     initWelcome();
     initHints();
+    setCodeFull(false); /* 默认不是全屏：终端只应该出现在全屏里 */
     dropLegacyAccountData();
     loadAiConfig();
     refreshGutter();
@@ -103,6 +104,13 @@
       copyResult($("practice-body"), "练习题");
     });
     $("btn-answer-full").addEventListener("click", toggleAnswerFull);
+    $("btn-code-full").addEventListener("click", toggleCodeFull);
+    $("btn-dev-exit").addEventListener("click", toggleCodeFull);
+    $("btn-dev-check").addEventListener("click", devCheck);
+    $("btn-dev-run").addEventListener("click", devRun);
+    $("btn-dev-clear").addEventListener("click", function () { devLog = []; renderDevLog(); });
+    $("btn-dev-send").addEventListener("click", addDevInput);
+    $("dev-input").addEventListener("keydown", onDevInputKey);
     $("btn-copy-part1").addEventListener("click", function () { copyResult($("part-plain"), "第 ① 段（纯答案代码）", true); });
     $("btn-copy-part2").addEventListener("click", function () { copyResult($("part-annotated"), "第 ② 段（带注释的代码）", true); });
     $("btn-copy-part3").addEventListener("click", function () { copyResult($("part-pitfalls"), "第 ③ 段（容易出错的地方）", true); });
@@ -110,7 +118,9 @@
       renderAnswerParts($("answer-body").value);
     });
     document.addEventListener("keydown", function (e) {
-      if (e && e.key === "Escape" && $("panel-answer").classList.contains("fullscreen")) toggleAnswerFull();
+      if (!e || e.key !== "Escape") return;
+      if (codeFullOn()) { toggleCodeFull(); return; }
+      if ($("panel-answer").classList.contains("fullscreen")) toggleAnswerFull();
     });
     $("btn-copy-prompt").addEventListener("click", function () {
       var box = $("prompt-out");
@@ -372,6 +382,115 @@
     var btn = $("btn-answer-full");
     if (btn) btn.textContent = on ? "退出全屏" : "放大到全屏";
     if (on) panel.scrollTop = 0;
+  }
+
+  /* ---------- 「你的代码」放大到全屏：编辑器铺满整屏，下面变成一个能跑的终端 ---------- */
+  var devLog = [];
+  var DEV_LOG_LIMIT = 20000;
+
+  function codeFullOn() {
+    var panel = $("panel-code");
+    return !!(panel && panel.classList && panel.classList.contains("fullscreen"));
+  }
+
+  function renderDevLog() {
+    var box = $("dev-out");
+    if (!box) return;
+    box.textContent = devLog.join("\n");
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function devWrite(text) {
+    devLog.push(String(text));
+    var all = devLog.join("\n");
+    if (all.length > DEV_LOG_LIMIT) devLog = [all.slice(all.length - DEV_LOG_LIMIT)];
+    renderDevLog();
+  }
+
+  function setCodeFull(on) {
+    var panel = $("panel-code");
+    if (!panel) return;
+    panel.classList[on ? "add" : "remove"]("fullscreen");
+    if (document.body && document.body.classList) {
+      document.body.classList[on ? "add" : "remove"]("code-full-open");
+    }
+    var dev = $("dev");
+    if (dev) dev.classList[on ? "remove" : "add"]("hidden");
+    var btn = $("btn-code-full");
+    if (btn) btn.textContent = on ? "退出全屏" : "放大到全屏";
+    if (!on) return;
+    if (!devLog.length) devWrite("终端已就绪：上面写代码，下面按题目样例输入数据，点「运行」看结果。");
+    var box = $("dev-input");
+    if (box && typeof box.focus === "function") box.focus();
+  }
+
+  function toggleCodeFull() { setCodeFull(!codeFullOn()); }
+
+  /* 终端里加一行输入：写进「用样例数据实测」的程序输入框，两边保持同一份内容 */
+  function addDevInput() {
+    var box = $("dev-input");
+    if (!box) return;
+    var line = String(box.value).replace(/\s+$/, "");
+    box.value = "";
+    if (!line) return;
+    var cur = $("stdin").value;
+    $("stdin").value = (cur === "" || /\n$/.test(cur) ? cur : cur + "\n") + line + "\n";
+    devWrite("> " + line);
+  }
+
+  function onDevInputKey(e) {
+    if (!e || e.key !== "Enter") return;
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey) { devRun(); return; }
+    if (String($("dev-input").value).trim()) addDevInput();
+    else devRun();
+  }
+
+  /* 终端里的「检查」：复用本地静态检查，把结果打一份到终端里 */
+  function devCheck() {
+    analyzeNow();
+    var f = state.findings || [];
+    if (!f.length) {
+      devWrite("$ 检查\n静态检查：没有发现常见写法错误。逻辑对不对还要用样例跑一遍——输入数据后点「运行」。");
+      return;
+    }
+    var lines = ["$ 检查", "静态检查：发现 " + f.length + " 个问题"];
+    for (var i = 0; i < f.length; i++) {
+      var x = f[i];
+      var sev = SEV[x.severity] ? SEV[x.severity].label : "";
+      lines.push("  第 " + x.line + " 行 " + sev + "：" + x.title + (x.fix ? "　改法：" + x.fix : ""));
+    }
+    devWrite(lines.join("\n"));
+  }
+
+  function devRun() {
+    if (String($("dev-input").value).trim()) addDevInput();
+    var code = $("code").value;
+    if (!code.trim()) { devWrite("$ 运行\n还没有代码：先把 C 代码粘到上面的编辑框里。"); return; }
+    var stdin = $("stdin").value;
+    var started = Date.now();
+    var result;
+    try {
+      result = runner.run(code, stdin, { timeoutMs: 4000 });
+    } catch (err) {
+      result = { ok: false, stdout: "", error: { title: "运行器内部错误", detail: String((err && err.message) || err), hint: "" } };
+    }
+    result.elapsed = Date.now() - started;
+
+    var lines = ["$ 运行" + (stdin.trim() ? "（输入：" + stdin.replace(/\s+$/, "").replace(/\n/g, " / ") + "）" : "（没有输入）")];
+    if (result.stdout) lines.push(result.stdout.replace(/\n+$/, ""));
+    if (result.ok) {
+      lines.push("[结束] 程序正常跑完，用时 " + result.elapsed + " 毫秒" + (result.stdout ? "" : "（程序没有输出）"));
+    } else {
+      var e = result.error || { title: "运行失败", detail: "", hint: "" };
+      lines.push("[出错] " + e.title + (e.line ? "（第 " + e.line + " 行）" : "") + (e.detail ? "：" + e.detail : ""));
+      if (e.hint) lines.push("[建议] " + e.hint);
+    }
+    devWrite(lines.join("\n"));
+
+    /* 顺手把「用样例数据实测」那边的结果也刷新，退出全屏后看到的是同一份结果 */
+    state.lastRun = { result: result, expected: $("expected").value };
+    renderRunResult(state.lastRun);
   }
 
   function aiKindLabel(kind) {

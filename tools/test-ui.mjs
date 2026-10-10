@@ -40,11 +40,15 @@ ids.forEach(id => { store[id] = El(id); });
 
 /* body 的 class 也记下来，用来检查「网站使用提示」的收起状态 */
 const bodyClass = new Set();
+/* document 上的键盘事件也要能触发，用来验证 Esc 退出全屏 */
+const docHandlers = {};
 
 const document = {
   readyState: "complete",
   getElementById: (id) => store[id] || (store[id] = El(id)),
-  addEventListener() {},
+  addEventListener(type, fn) { (docHandlers[type] = docHandlers[type] || []).push(fn); },
+  removeEventListener(type, fn) { docHandlers[type] = (docHandlers[type] || []).filter((h) => h !== fn); },
+  dispatch(type, ev) { (docHandlers[type] || []).slice().forEach((fn) => fn(ev || {})); },
   querySelectorAll() { return []; },
   createElement: () => El("tmp"),
   execCommand: () => true,
@@ -453,6 +457,84 @@ store["pta-feedback"].value = "测试点 3　段错误（Segmentation Fault）";
 store["btn-translate"].dispatch("click");
 check("翻译结果不走三段式，直接展开原始回答那一段", store["answer-parts"].classList.contains("hidden") && store["answer-raw-wrap"].open === true);
 
+console.log("=== 「你的代码」放大到全屏：小工作台 + 终端 ===");
+store["stdin"].value = "";
+const key = (extra) => Object.assign({ key: "Enter", preventDefault() {} }, extra || {});
+check("「你的代码」面板有了 id 和放大到全屏按钮", /id="panel-code"/.test(html) && /class="panel code-panel"/.test(html) && /id="btn-code-full"/.test(html));
+check("全屏样式已定义", /\.panel\.code-panel\.fullscreen/.test(css));
+check("终端是页面里就有的（默认收起）", !/class="dev"/.test(html) && /id="dev" class="dev hidden"/.test(html));
+check("终端默认不显示", store["dev"].classList.contains("hidden"));
+
+store["btn-code-full"].dispatch("click");
+check("点一下进入全屏", store["panel-code"].classList.contains("fullscreen") && bodyClass.has("code-full-open"));
+check("全屏后终端出现", !store["dev"].classList.contains("hidden"));
+check("按钮变成「退出全屏」", store["btn-code-full"].textContent === "退出全屏", store["btn-code-full"].textContent);
+check("终端给了就绪提示", /终端已就绪/.test(store["dev-out"].textContent), store["dev-out"].textContent.slice(0, 40));
+
+store["dev-input"].value = "3 4";
+store["btn-dev-send"].dispatch("click");
+check("「加入输入」把这一行写进程序输入框", store["stdin"].value === "3 4\n", JSON.stringify(store["stdin"].value));
+check("终端里回显了这一行", /> 3 4/.test(store["dev-out"].textContent));
+
+store["code"].value = '#include <stdio.h>\nint main(){ int a,b; scanf("%d %d",&a,&b); printf("%d\\n", a+b); return 0; }';
+store["code"].dispatch("input");
+flush();
+store["btn-dev-run"].dispatch("click");
+flush();
+check("终端里跑出了结果 7", /\[结束\]/.test(store["dev-out"].textContent) && /\n7\n/.test(store["dev-out"].textContent), store["dev-out"].textContent.slice(-140));
+check("终端运行也刷新了「用样例数据实测」的结果", /正常运行结束/.test(store["run-status"].textContent), store["run-status"].textContent);
+
+const logVoid = store["dev-out"].textContent.length;
+store["code"].value = '#include <stdio.h>\nint main(void){ printf("ok"); return 0; }';
+store["code"].dispatch("input");
+flush();
+store["btn-dev-run"].dispatch("click");
+const voidLog = store["dev-out"].textContent.slice(logVoid);
+check("终端能直接跑 int main(void) 这种写法", /ok/.test(voidLog) && !/\[出错\]/.test(voidLog), voidLog.replace(/\n/g, " | ").slice(0, 90));
+
+const log1 = store["dev-out"].textContent;
+store["dev-input"].value = "9 9";
+store["dev-input"].dispatch("keydown", key());
+check("输入框里回车等于加入一行", store["stdin"].value.endsWith("9 9\n") && store["dev-input"].value === "");
+const log2 = store["dev-out"].textContent;
+store["dev-input"].dispatch("keydown", key());
+check("空着回车等于直接运行", log2.length > log1.length && /\[结束\]/.test(store["dev-out"].textContent.slice(log2.length)));
+const log3 = store["dev-out"].textContent;
+store["dev-input"].dispatch("keydown", key({ ctrlKey: true }));
+check("Ctrl+Enter 也能运行", store["dev-out"].textContent.length > log3.length);
+
+store["code"].value = '#include <stdio.h>\nint main(){ int a; scanf("%d", a); return 0 }';
+store["code"].dispatch("input");
+flush();
+store["btn-dev-check"].dispatch("click");
+check("终端里的「检查」会打印静态检查结果", /静态检查：发现/.test(store["dev-out"].textContent) && /少了 &/.test(store["dev-out"].textContent), store["dev-out"].textContent.slice(0, 120));
+
+store["btn-dev-clear"].dispatch("click");
+check("「清空终端」清掉日志", store["dev-out"].textContent === "", store["dev-out"].textContent.slice(0, 40));
+
+store["btn-dev-exit"].dispatch("click");
+check("「退出全屏」恢复正常", !store["panel-code"].classList.contains("fullscreen") && store["dev"].classList.contains("hidden") && !bodyClass.has("code-full-open"));
+check("退出全屏按钮文案恢复", store["btn-code-full"].textContent === "放大到全屏", store["btn-code-full"].textContent);
+
+store["btn-code-full"].dispatch("click");
+document.dispatch("keydown", { key: "Escape" });
+check("按 Esc 也能退出代码全屏", !store["panel-code"].classList.contains("fullscreen") && !bodyClass.has("code-full-open"));
+
+console.log("=== 内置解释器不再依赖 eval（严格 CSP 下也能运行） ===");
+const vendor = readFileSync(path.join(root, "assets/vendor/jscpp.js"), "utf8");
+const buildScript = readFileSync(path.join(root, "tools/build-jscpp.mjs"), "utf8");
+check("页面的 CSP 没有放松（仍然禁止 unsafe-eval）", /script-src 'self'/.test(html) && !/unsafe-eval/.test(html) && !/unsafe-eval/.test(css));
+check("打包脚本里有把解析器 eval 换掉的补丁", buildScript.indexOf("parser-unescape.js") >= 0 && buildScript.indexOf("patchParserEval") >= 0 && buildScript.indexOf("ast\\.js$") >= 0 && buildScript.indexOf("prepast\\.js$") >= 0);
+check("C 字符串的转义有不用 eval 的实现", /fromCharCode\(parseInt\([A-Za-z_$][\w$]*,8\)&255\)/.test(vendor));
+check("解析器里不再留 eval 做转义", !/eval\('"\\\\/.test(vendor));
+check("解释器能真的跑起来（main(void) + scanf + printf）", (() => {
+  let out = "";
+  try {
+    sandbox.JSCPP.run('#include <stdio.h>\nint main(void){ int a,b; scanf("%d %d", &a, &b); printf("%d\\n", a+b); return 0; }', "3 4\n", { maxTimeout: 3000, stdio: { write: (s) => { out += s; } } });
+  } catch (e) { out = "ERR:" + (e && e.message); }
+  return out === "7\n";
+})(), "out=" + JSON.stringify(vendor.length));
+
 console.log("=== 布局回归：错误列表不能盖住下方面板 ===");
 check("检查结果面板不再吸附（sticky 会盖住紧随其后的面板）", html.indexOf("panel sticky") < 0, "index.html 里仍存在 panel sticky");
 check("样式里不再给结果面板设 sticky", !/\.panel\.sticky\s*\{/.test(css));
@@ -461,3 +543,5 @@ check("题目/反馈面板紧跟在检查结果面板之后（同级）", /id="f
 
 console.log("\n集成测试：" + ok + " 通过 / " + (ok + bad) + " 项");
 if (bad) process.exitCode = 1;
+
+
