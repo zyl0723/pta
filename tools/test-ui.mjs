@@ -148,11 +148,16 @@ store.stdin.value = "5\n";
 store.expected.value = "5";
 store["btn-run"].dispatch("click");
 flush();
+check("有错误时先不让跑，并指出问题", /先别跑/.test(store["run-status"].textContent) && /第 2 行/.test(store["run-body"].innerHTML), store["run-status"].textContent);
+store["btn-run"].dispatch("click");
+flush();
 check("运行报错被翻译成中文", /scanf 的参数要写变量地址/.test(store["run-body"].innerHTML), store["run-body"].innerHTML.slice(0, 200));
 
 console.log("=== 语法错误 ===");
 store.code.value = '#include <stdio.h>\nint main(){ int a = 1\nprintf("%d", a); return 0; }';
 store.code.dispatch("input");
+flush();
+store["btn-run"].dispatch("click");
 flush();
 store["btn-run"].dispatch("click");
 flush();
@@ -630,7 +635,9 @@ check("页面引了 xterm 的样式", /assets\/vendor\/xterm\.css/.test(html));
 check("app.js 按需加载 xterm.js", /assets\/vendor\/xterm\.js/.test(readFileSync(path.join(root, "assets/js/app.js"), "utf8")));
 check("打包脚本能重新生成它", /build:terminal/.test(readFileSync(path.join(root, "package.json"), "utf8")) && typeof pkg.dependencies["@xterm/xterm"] === "string");
 check("署名文件里有 xterm.js 的条目与许可", /@xterm\/xterm/.test(notices) && /### @xterm\/xterm/.test(notices) && /The xterm\.js authors/.test(notices));
+check("配套的 fit 插件也署了名", /@xterm\/addon-fit/.test(notices) && /### @xterm\/addon-fit/.test(notices) && /@xterm\/addon-fit/.test(xtermSrc.slice(0, 1200)) && /addon-fit/.test(readme));
 check("README 的第三方清单里也列了它", /@xterm\/xterm/.test(readme) && /xterm\.js/.test(readme));
+check("终端用官方 fit 插件自适应尺寸", /FitAddon/.test(readFileSync(path.join(root, "assets/js/app.js"), "utf8")) && /fitTerminal/.test(readFileSync(path.join(root, "assets/js/app.js"), "utf8")));
 
 /* 用一个假的 xterm 驱动一遍终端接线：打字、回车加输入、空回车运行、退格、Ctrl+C */
 const fakeTerm = {
@@ -669,6 +676,52 @@ const beforeCtrlC = store["stdin"].value.length;
 fakeTerm.dataHandler("x\u0003");
 check("Ctrl+C 丢掉当前行、不写进输入", store["stdin"].value.length === beforeCtrlC);
 store["btn-dev-exit"].dispatch("click");
+
+/* 「清空终端」以前只清了 <pre>，xterm 那边没反应——这里盯住它 */
+fakeTerm.resetCount = 0;
+fakeTerm.reset = function () { this.resetCount++; this.written = ""; };
+store["btn-dev-clear"].dispatch("click");
+check("「清空终端」真的把终端清了", fakeTerm.resetCount === 1 && /终端已清空/.test(fakeTerm.written), "reset=" + fakeTerm.resetCount);
+check("「清空终端」也把日志清空了", store["dev-out"].textContent === "", store["dev-out"].textContent.slice(0, 30));
+
+/* 检查不通过先别跑；再点一次才是强行运行 */
+store["code"].value = '#include <stdio.h>\nint main(){ int n; scanf("%d", n); printf("%d", n); return 0; }';
+store["code"].dispatch("input");
+flush();
+store["stdin"].value = "5\n";
+store["btn-dev-run"].dispatch("click");
+flush();
+check("终端里：有错误先不让跑，并指出第几行", /先别跑/.test(store["dev-out"].textContent) && /第 2 行/.test(store["dev-out"].textContent) && !/\[结束\]/.test(store["dev-out"].textContent), store["dev-out"].textContent.slice(-90));
+store["btn-dev-run"].dispatch("click");
+flush();
+check("再点一次＝强行运行，并写明忽略了错误", /忽略 1 个错误强行运行/.test(store["dev-out"].textContent), store["dev-out"].textContent.slice(-110));
+
+/* 小黑框：平时点「运行」弹出来，收起后回到面板；Esc 也能收 */
+store["code"].value = '#include <stdio.h>\nint main(){ printf("ok"); return 0; }';
+store["code"].dispatch("input");
+flush();
+store["stdin"].value = "";
+const movedTo = [];
+store["dev-float-body"].appendChild = function (el) { movedTo.push(el); };
+store["btn-float-close"].dispatch("click");
+check("平时（没进全屏）小黑框是收着的", store["dev-float"].classList.contains("hidden") && store["dev"].classList.contains("hidden"));
+store["btn-dev-run"].dispatch("click");
+flush();
+check("平时点运行会弹出小黑框", !store["dev-float"].classList.contains("hidden"));
+check("终端被挪进小黑框里", movedTo.indexOf(store["dev"]) >= 0 && !store["dev"].classList.contains("hidden"));
+check("小黑框里有「清空」和「收起」两个按钮", /id="btn-float-clear"/.test(html) && /id="btn-float-close"/.test(html));
+store["btn-float-clear"].dispatch("click");
+check("小黑框上的「清空」一样管用", fakeTerm.resetCount === 2 && /终端已清空/.test(fakeTerm.written));
+store["btn-float-close"].dispatch("click");
+check("点「收起」关掉小黑框", store["dev-float"].classList.contains("hidden") && store["dev"].classList.contains("hidden"));
+store["btn-dev-run"].dispatch("click");
+flush();
+document.dispatch("keydown", { key: "Escape" });
+check("按 Esc 也能收起小黑框", store["dev-float"].classList.contains("hidden"));
+store["btn-code-full"].dispatch("click");
+check("进全屏时小黑框关掉、终端回到代码面板", store["dev-float"].classList.contains("hidden") && !store["dev"].classList.contains("hidden") && store["panel-code"].classList.contains("fullscreen"));
+store["btn-code-full"].dispatch("click");
+
 delete sandbox.Xterm;
 
 console.log("\n集成测试：" + ok + " 通过 / " + (ok + bad) + " 项");

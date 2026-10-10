@@ -1,6 +1,6 @@
 # C 语言习题检查器
 
-> 作者：**zyl0723**（<https://github.com/zyl0723>）。本仓库自有代码版权归作者所有；用到的第三方组件（JSCPP 2.0.9、lodash 4.18.1、pegjs-util 1.4.21、printf 0.6.1、PEG.js 0.9.0、xterm.js 6.0.0，均为 MIT）许可见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
+> 作者：**zyl0723**（<https://github.com/zyl0723>）。本仓库自有代码版权归作者所有；用到的第三方组件（JSCPP 2.0.9、lodash 4.18.1、pegjs-util 1.4.21、printf 0.6.1、PEG.js 0.9.0、xterm.js 6.0.0、@xterm/addon-fit 0.11.0，均为 MIT）许可见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
 
 一个纯前端网页工具，用来检查 PTA 平台上 C 语言基础题的代码。粘贴代码后，它会**直白地指出问题出在哪一行、为什么错、怎么改**，并且能**真的把代码跑起来**，把运行结果和题目要求的输出逐行对比。
 
@@ -24,7 +24,7 @@
 10. **二次检查**：拿你生成的那份答案当标准，用你自己的 AI 把「你的代码」再对照着重查一遍，结果**覆盖**右侧「检查结果」；每改一次代码，点一下「二次检查」刷新。
 11. **三段式答案 + 全屏**：「答案与解析」按「① 纯答案代码 / ② 代码 + 逐行注释 / ③ 容易出错的地方」分成三个框，背景**从淡粉到深粉逐段加深**，每段各有一个复制按钮；右上角「放大到全屏」可以把答案框铺满整屏，方便一行行对着看。
 12. **网站使用提示**：「你的代码」面板右上角的「网站使用提示」按钮掌控各模块的说明文字——点一下把说明全部收起，界面只剩输入框和按钮，看着不眼花；再点一下显示回来。收起状态记在你自己浏览器里（`localStorage`，键名 `pta-hints-off`），下次打开保持上次的选择。
-13. **全屏小工作台**：「你的代码」右上角的「放大到全屏」把编辑器铺满整屏，下面多出一个终端（用的是开源库 [xterm.js](https://github.com/xtermjs/xterm.js)，MIT）：在终端里直接打字，回车＝把这行加进输入、空着回车＝运行、退格删字、Ctrl+C 清掉当前行；工具栏上的「检查」会把静态检查的结果也打进终端。终端与「用样例数据实测」共用同一份输入、同一份运行结果，退出全屏看到的是同一个东西；按 Esc 也能退出全屏。xterm.js 只有进全屏时才按需加载，首屏不会因此变大；如果它没加载出来，会自动退回页面自带的简易终端。
+13. **像 dev 工具一样：检查 → 运行 → 终端**：右上角「放大到全屏」把编辑器铺满整屏，下面是一个终端（开源库 [xterm.js](https://github.com/xtermjs/xterm.js) + 官方 [addon-fit](https://github.com/xtermjs/xterm.js/tree/master/addons/addon-fit)，均 MIT，已署名）。流程是：先「检查」——有「错误」级问题就**先别跑**，终端里会写清第几行、错在哪、怎么改；把错误改掉（或再点一次「运行」＝强行运行）才会真的执行。**点「运行」时终端会自己弹出来**（平时是右下角的「小黑框」，进全屏就收在代码面板里），可以直接打字：回车＝把这行加进输入、空着回车＝再跑一次、退格删字、Ctrl+C 清掉当前行；工具栏上的「清空」会把终端和日志一起清干净。终端与「用样例数据实测」共用同一份输入和结果。xterm.js 按需加载，首屏不会因此变大；没加载出来会自动退回页面自带的简易终端。
 14. **语言 + 难度（最高优先级）**：「你的代码」右上角有两个下拉框——**语言**（C 语言 / Python / C++ / Java）和**答案难度**（简单 / 中等 / 困难）。选完以后，页面里的答案与解析、练习、翻译、二次检查全都按这两个选择来：拼好的提示词里会写明「用哪种语言、给谁看的什么难度」。
 
 - **难度**：`简单`＝只给新手能一眼看懂的写法（不用任何技巧）；`中等`＝简洁一些，允许用一点基础技巧（拆函数、常用库函数）；`困难`＝直接给最快最好用的写法（算法、标准库工具都用上，不照顾可读性、不绕弯子）。
@@ -241,10 +241,12 @@ tools/                  构建脚本、补丁、测试
 | pegjs-util | 1.4.21 | Dr. Ralf S. Engelschall | JSCPP 解析 C 源码时的辅助库 |
 | printf | 0.6.1 | Copyright (c) 2008 Adaltas | JSCPP 的 printf 实现 |
 | PEG.js | 0.9.0（仅作生成器） | Copyright (c) 2010-2016 David Majda | JSCPP 的「C 语法 / 预处理」解析器由它生成，生成代码随 JSCPP 一起打包 |
-| @xterm/xterm | 6.0.0 | Copyright (c) 2017-2019 The xterm.js authors；Copyright (c) 2014-2016 SourceLair Private Company；Copyright (c) 2012-2013 Christopher Jeffrey | 全屏工作台的终端；**未修改**其源码，只打包压缩（样式原样复制） |
+| @xterm/xterm | 6.0.0 | Copyright (c) 2017-2019 The xterm.js authors；Copyright (c) 2014-2016 SourceLair Private Company；Copyright (c) 2012-2013 Christopher Jeffrey | 终端组件；**未修改**其源码，只打包压缩（样式原样复制） |
+| @xterm/addon-fit | 0.11.0 | Copyright (c) 2019 The xterm.js authors | xterm.js 官方的尺寸自适应插件：终端行列跟着盒子大小走，中文长行不被裁 |
 
 - 每个组件的**完整许可全文与版权行**见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) 第四节。
 - 对 JSCPP 的修改（scanf 读取修复、`EOF` 取值、printf 类型映射等）已按 MIT 要求在 THIRD-PARTY-NOTICES.md 第二节明确声明。
 - 只在构建阶段使用、**不随产物分发**的依赖：esbuild 0.28.2（MIT, Copyright (c) 2020 Evan Wallace）。
 - 清单可自行复现核对：跑 `npm run build:engine`，会打印「打包进产物的第三方包」。
 - 本仓库没有使用任何来源不明或无许可证的代码；没有把 PTA 的题目原文、题目数据或他人题解打包进来。
+

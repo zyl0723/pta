@@ -14,18 +14,20 @@ import esbuild from "esbuild";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const pkgDir = path.join(root, "node_modules/@xterm/xterm");
 const pkg = JSON.parse(readFileSync(path.join(pkgDir, "package.json"), "utf8"));
+const fitPkg = JSON.parse(readFileSync(path.join(root, "node_modules/@xterm/addon-fit/package.json"), "utf8"));
 
 const banner = [
   "/*!",
   " * 本文件由 tools/build-xterm.mjs 自动生成，内容是第三方开源终端库 xterm.js（未修改其源码），请勿手工编辑。",
   " * xterm.js " + pkg.version + "（MIT 许可）：Copyright (c) 2017-2019 The xterm.js authors (https://github.com/xtermjs/xterm.js)、",
   " * Copyright (c) 2014-2016 SourceLair Private Company (https://www.sourcelair.com)、Copyright (c) 2012-2013 Christopher Jeffrey。",
+  " * 同时打包了官方配套插件 @xterm/addon-fit " + fitPkg.version + "（MIT 许可）：Copyright (c) 2019 The xterm.js authors。",
   " * 完整许可文本见仓库根目录 THIRD-PARTY-NOTICES.md。",
   " */",
 ].join("\n");
 
 const result = await esbuild.build({
-  entryPoints: [path.join(pkgDir, "lib/xterm.mjs")],
+  entryPoints: [path.join(root, "tools/xterm-entry.js")],
   bundle: true,
   minify: true,
   format: "iife",

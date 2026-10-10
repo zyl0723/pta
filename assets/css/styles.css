@@ -408,6 +408,29 @@ body.code-full-open { overflow: hidden; }
 .dev-input { flex: 1 1 auto; font-family: var(--mono); }
 .dev-note { margin: 0; font-size: 12.5px; line-height: 1.7; color: #5b4850; }
 
+/* 运行时弹出的「小黑框」终端（平时浮在右下角；进全屏时终端会挪回代码面板） */
+.dev-float {
+  position: fixed; right: 16px; bottom: 16px; z-index: 900;
+  width: min(560px, calc(100vw - 32px));
+  background: #2f1e27; border: 1px solid #1f141b; border-radius: 10px;
+  box-shadow: 0 16px 40px rgba(58, 33, 45, 0.42);
+}
+.dev-float-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 7px 8px 7px 12px; border-bottom: 1px solid #1f141b; flex-wrap: wrap;
+}
+.dev-float-title { font-size: 12.5px; font-weight: 650; color: #f6e9ef; }
+.dev-float-actions { display: flex; align-items: center; gap: 6px; }
+.dev-float-actions .btn { background: #4a2f3b; border-color: #5d3c4b; color: #f6e9ef; }
+.dev-float-actions .btn:hover { background: #5b3a48; }
+.dev-float-body { padding: 10px 12px 12px; }
+.dev-float .dev { margin-top: 0; }
+.dev-float .dev-title { color: #f6e9ef; }
+.dev-float .dev-out { height: 200px; min-height: 140px; }
+.dev-float .dev-term { height: 200px; min-height: 140px; }
+.dev-float .dev-note { color: #d9c3cd; }
+.dev-float #btn-dev-exit { display: none; }
+
 /* ---------- 响应式 ---------- */
 @media (max-width: 1000px) {
   .layout { grid-template-columns: 1fr; }

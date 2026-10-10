@@ -34,6 +34,7 @@
 | pegjs-util | 1.4.21 | MIT | Dr. Ralf S. Engelschall（该包未随附 LICENSE 文件，以其 package.json 声明的 MIT 为准） | JSCPP 解析 C 源码时的辅助库 |
 | printf | 0.6.1 | MIT | Copyright (c) 2008 Adaltas | JSCPP 的 printf 实现 |
 | PEG.js | 0.9.0（生成器版本） | MIT | Copyright (c) 2010-2016 David Majda | JSCPP 用它生成「C 语法 / 预处理」解析器，生成出来的代码随 JSCPP 一起打包进产物（`pegjs` 本体只在生成阶段用，**没有**打包进产物） |
+| @xterm/addon-fit | 0.11.0 | MIT | Copyright (c) 2019 The xterm.js authors | xterm.js 官方的「尺寸自适应」插件：让终端的行列数跟着盒子大小走，中文长行不会被裁掉 |
 | @xterm/xterm | 6.0.0 | MIT | Copyright (c) 2017-2019 The xterm.js authors；Copyright (c) 2014-2016 SourceLair Private Company；Copyright (c) 2012-2013 Christopher Jeffrey | 「放大到全屏」工作台里的终端（真正的终端组件）。产物 `assets/vendor/xterm.js` **未修改** xterm.js 源码，只做打包压缩；样式文件原样复制 |
 
 上游地址：JSCPP <https://github.com/felixhao28/JSCPP>；lodash <https://github.com/lodash/lodash>；pegjs-util <https://github.com/rse/pegjs-util>；printf <https://github.com/adaltas/node-printf>；PEG.js <https://github.com/pegjs/pegjs>；xterm.js <https://github.com/xtermjs/xterm.js>。
@@ -238,7 +239,30 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
+### @xterm/addon-fit 0.11.0
+
+Copyright (c) 2019, The xterm.js authors (https://github.com/xtermjs/xterm.js)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
 ## 五、自有代码的授权
 
 本仓库自有代码目前未声明开源许可，作者保留所有权利（All rights reserved）。若要以 MIT 等许可发布，由作者决定后再修改本节。
+
 

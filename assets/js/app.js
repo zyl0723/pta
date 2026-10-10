@@ -9,7 +9,7 @@
   var runner = window.PTARunner;
   var problems = window.PTAProblems || [];
 
-  var state = { findings: [], timer: null, currentProblem: null, lastRun: null, aiRun: null, aiTarget: "answer", aiCheckMode: false, aiCheckStale: false };
+  var state = { findings: [], timer: null, currentProblem: null, lastRun: null, aiRun: null, aiTarget: "answer", aiCheckMode: false, aiCheckStale: false, runForced: false };
 
   var HINT_WEB = "下面这段就是发给 AI 的内容。想直接在这里出结果就点「在本站生成」；想用你自己的 AI 网页，就点「复制提示词」再粘贴过去。";
 
@@ -70,6 +70,7 @@
     bindEvents();
     initWelcome();
     initHints();
+    closeFloat(); /* 小黑框默认收起 */
     setCodeFull(false); /* 默认不是全屏：终端只应该出现在全屏里 */
     dropLegacyAccountData();
     loadAiConfig();
@@ -81,6 +82,7 @@
     var code = $("code");
 
     code.addEventListener("input", function () {
+      state.runForced = false;
       refreshGutter();
       if (state.aiCheckMode) { markRecheckStale(); return; }
       if (state.timer) clearTimeout(state.timer);
@@ -145,7 +147,9 @@
     $("btn-dev-exit").addEventListener("click", toggleCodeFull);
     $("btn-dev-check").addEventListener("click", devCheck);
     $("btn-dev-run").addEventListener("click", devRun);
-    $("btn-dev-clear").addEventListener("click", function () { devLog = []; renderDevLog(); });
+    $("btn-dev-clear").addEventListener("click", clearDevLog);
+    $("btn-float-clear").addEventListener("click", clearDevLog);
+    $("btn-float-close").addEventListener("click", closeFloat);
     $("btn-dev-send").addEventListener("click", addDevInput);
     $("dev-input").addEventListener("keydown", onDevInputKey);
     $("btn-copy-part1").addEventListener("click", function () { copyResult($("part-plain"), "第 ① 段（纯答案代码）", true); });
@@ -157,6 +161,7 @@
     document.addEventListener("keydown", function (e) {
       if (!e || e.key !== "Escape") return;
       if (codeFullOn()) { toggleCodeFull(); return; }
+      if (floatOpen()) { closeFloat(); return; }
       if ($("panel-answer").classList.contains("fullscreen")) toggleAnswerFull();
     });
     $("btn-copy-prompt").addEventListener("click", function () {
@@ -525,9 +530,87 @@
     if (term && !(opts && opts.skipTerm)) term.write(String(text).replace(/\n/g, "\r\n") + "\r\n");
   }
 
+  /* 清空终端：日志、<pre> 和 xterm 三处一起清，别再出现「点了没反应」 */
+  function clearDevLog() {
+    devLog = [];
+    termLine = "";
+    renderDevLog();
+    if (term) {
+      try { term.reset(); } catch (err) { /* 清不了就算了 */ }
+      term.write("终端已清空。\r\n> ");
+    }
+  }
+
+  /* 运行前的把关：先静态检查；有「错误」级问题就先别跑，把问题说清楚，再点一次才强行运行 */
+  function runGate() {
+    analyzeNow();
+    var errs = (state.findings || []).filter(function (f) { return f.severity === "error"; });
+    if (!errs.length) { state.runForced = false; return { run: true, errors: [], forced: false }; }
+    if (state.runForced) { state.runForced = false; return { run: true, errors: errs, forced: true }; }
+    state.runForced = true;
+    return { run: false, errors: errs, forced: false };
+  }
+
+  /* 把「先别跑」的理由写成几行文字，终端和右侧都用它 */
+  function gateLines(errors) {
+    var lines = [];
+    for (var i = 0; i < errors.length && i < 5; i++) {
+      var x = errors[i];
+      lines.push("  第 " + x.line + " 行：" + x.title + (x.fix ? "　改法：" + x.fix : ""));
+    }
+    if (errors.length > 5) lines.push("  ……还有 " + (errors.length - 5) + " 个，看右边的「检查结果」。");
+    lines.push("改完再点「运行」；确认要强行运行（可能直接崩），就再点一次「运行」。");
+    return lines;
+  }
+
+  /* ---------- 运行时弹出的「小黑框」终端：同一个终端，进全屏时收进代码面板，平时浮在右下角 ---------- */
+  function floatOpen() {
+    var box = $("dev-float");
+    return !!(box && box.classList && !box.classList.contains("hidden"));
+  }
+
+  function syncDevPlacement() {
+    var dev = $("dev");
+    var body = $("dev-float-body");
+    var anchor = $("lang-warn");
+    if (!dev) return;
+    var inFloat = floatOpen() && !codeFullOn();
+    if (inFloat) {
+      if (body && dev.parentNode !== body && typeof body.appendChild === "function") body.appendChild(dev);
+    } else if (anchor && anchor.parentNode && dev.parentNode !== anchor.parentNode) {
+      anchor.parentNode.insertBefore(dev, anchor);
+    }
+    dev.classList[codeFullOn() || inFloat ? "remove" : "add"]("hidden");
+    scheduleFit();
+  }
+
+  /* 点「运行」时把它弹出来；进全屏时收回去（终端跟着挪到代码面板里） */
+  function openFloat() {
+    var box = $("dev-float");
+    if (!box) return;
+    box.classList.remove("hidden");
+    syncDevPlacement();
+    loadTerminal();
+    scheduleFit();
+    focusTerminal();
+  }
+
+  function closeFloat() {
+    var box = $("dev-float");
+    if (box) box.classList.add("hidden");
+    syncDevPlacement();
+  }
+
+  /* 跑完一次之后：全屏里就把终端拉到眼前，平时就把小黑框弹出来 */
+  function afterRun() {
+    if (codeFullOn()) { focusTerminal(); return; }
+    openFloat();
+  }
+
   function setCodeFull(on) {
     var panel = $("panel-code");
     if (!panel) return;
+    if (on) closeFloat();
     panel.classList[on ? "add" : "remove"]("fullscreen");
     if (document.body && document.body.classList) {
       document.body.classList[on ? "add" : "remove"]("code-full-open");
@@ -536,6 +619,7 @@
     if (dev) dev.classList[on ? "remove" : "add"]("hidden");
     var btn = $("btn-code-full");
     if (btn) btn.textContent = on ? "退出全屏" : "放大到全屏";
+    syncDevPlacement();
     if (!on) return;
     if (!devLog.length) devWrite("终端已就绪：上面写代码，下面按题目样例输入数据，点「运行」看结果。");
     loadTerminal();
@@ -551,6 +635,25 @@
   var term = null;
   var termState = "idle"; /* idle | loading | ready | failed */
   var termLine = "";
+  var fitAddon = null;
+  var fitTimer = null;
+
+  /* 让终端的行列数跟着盒子大小走（用 xterm 官方的 fit 插件） */
+  function fitTerminal() {
+    if (!fitAddon || !term) return;
+    var dev = $("dev");
+    if (dev && dev.classList && dev.classList.contains("hidden")) return;
+    try { fitAddon.fit(); } catch (err) { /* 量不出尺寸就算了 */ }
+  }
+
+  function scheduleFit() {
+    if (fitTimer) clearTimeout(fitTimer);
+    fitTimer = setTimeout(fitTerminal, 60);
+  }
+
+  if (typeof window !== "undefined" && window && typeof window.addEventListener === "function") {
+    window.addEventListener("resize", scheduleFit);
+  }
 
   function loadTerminal() {
     if (termState !== "idle") return;
@@ -577,11 +680,16 @@
       });
       term.open(host);
       term.onData(onTermData);
+      if (window.Xterm.FitAddon && typeof term.loadAddon === "function") {
+        fitAddon = new window.Xterm.FitAddon();
+        term.loadAddon(fitAddon);
+      }
       termState = "ready";
       var dev = $("dev");
       if (dev) dev.classList.add("term-on");
       if (devLog.length) term.write(devLog.join("\r\n") + "\r\n");
       term.write("> ");
+      fitTerminal();
       focusTerminal();
     } catch (err) {
       term = null;
@@ -651,7 +759,7 @@
     analyzeNow();
     var f = state.findings || [];
     if (!f.length) {
-      devWrite("$ 检查\n静态检查：没有发现常见写法错误。逻辑对不对还要用样例跑一遍——输入数据后点「运行」。");
+      devWrite("$ 检查\n检查通过：没有发现常见写法错误，可以运行了——先按题目样例输入数据，再点「运行」。");
       return;
     }
     var lines = ["$ 检查", "静态检查：发现 " + f.length + " 个问题"];
@@ -671,6 +779,11 @@
     if (String($("dev-input").value).trim()) addDevInput();
     var code = $("code").value;
     if (!code.trim()) { devWrite("$ 运行\n还没有代码：先把代码粘到上面的编辑框里。"); return; }
+    var gate = runGate();
+    if (!gate.run) {
+      devWrite("$ 运行\n先别跑：静态检查发现 " + gate.errors.length + " 个错误，先改掉。\n" + gateLines(gate.errors).join("\n"));
+      return;
+    }
     var stdin = $("stdin").value;
     var started = Date.now();
     var result;
@@ -681,7 +794,9 @@
     }
     result.elapsed = Date.now() - started;
 
-    var lines = ["$ 运行" + (stdin.trim() ? "（输入：" + stdin.replace(/\s+$/, "").replace(/\n/g, " / ") + "）" : "（没有输入）")];
+    var lines = ["$ 运行"
+      + (gate.forced ? "（忽略 " + gate.errors.length + " 个错误强行运行）" : "")
+      + (stdin.trim() ? "（输入：" + stdin.replace(/\s+$/, "").replace(/\n/g, " / ") + "）" : "（没有输入）")];
     if (result.stdout) lines.push(result.stdout.replace(/\n+$/, ""));
     if (result.ok) {
       lines.push("[结束] 程序正常跑完，用时 " + result.elapsed + " 毫秒" + (result.stdout ? "" : "（程序没有输出）"));
@@ -695,6 +810,7 @@
     /* 顺手把「用样例数据实测」那边的结果也刷新，退出全屏后看到的是同一份结果 */
     state.lastRun = { result: result, expected: $("expected").value };
     renderRunResult(state.lastRun);
+    afterRun();
   }
 
   function aiKindLabel(kind) {
@@ -1122,6 +1238,16 @@
     var code = $("code").value;
     var stdin = $("stdin").value;
     var expected = $("expected").value;
+    var gate = runGate();
+    if (!gate.run) {
+      devWrite("$ 运行\n先别跑：静态检查发现 " + gate.errors.length + " 个错误，先改掉。\n" + gateLines(gate.errors).join("\n"));
+      $("run-status").className = "run-status bad";
+      $("run-status").textContent = "先别跑：静态检查发现 " + gate.errors.length + " 个错误（终端里和右侧「检查结果」都写了）。改完再运行；确认要强行运行就再点一次「运行并对比」。";
+      $("run-body").innerHTML = '<div class="run-error"><div class="re-title">先修好这些错误再运行</div>'
+        + '<div class="re-detail">' + esc(gateLines(gate.errors).join("\n")) + "</div></div>";
+      afterRun();
+      return;
+    }
     var btn = $("btn-run");
     btn.disabled = true;
     $("run-status").textContent = "正在运行…";
@@ -1138,6 +1264,8 @@
       result.elapsed = Date.now() - started;
       state.lastRun = { result: result, expected: expected };
       renderRunResult(state.lastRun);
+      if (gate.forced) $("run-status").textContent += "（忽略 " + gate.errors.length + " 个错误强行运行）";
+      afterRun();
       btn.disabled = false;
     }, 20);
   }
