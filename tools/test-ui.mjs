@@ -944,6 +944,42 @@ flush();
 store["btn-check"].dispatch("click");
 check("完整正确代码：检查通过，并说明已经试跑过", /没有发现问题/.test(store["summary"].innerHTML) && /内置解释器试跑/.test(store["summary"].innerHTML), store["summary"].innerHTML);
 
+console.log("=== 那段「一堆错误」的代码必须全查出来 ===");
+store["code-lang"].value = "c";
+store["code-lang"].dispatch("change");
+flush();
+store["stdin"].value = "";
+store["code"].value = ['#include<studio.h>', 'int main(){', 'int a', 'int b', 'scanf<%d,a,b>', 'printf<%d/n,a+b>', '    return 0;', '}'].join("\n");
+store["code"].dispatch("input");
+flush();
+store["btn-check"].dispatch("click");
+const messyHtml = store["findings"].innerHTML;
+check("头文件拼错（studio.h）会被指出来", /studio\.h/.test(messyHtml) && /头文件名拼错/.test(messyHtml));
+check("缺分号的两行都会被指出来", (messyHtml.match(/少了分号/g) || []).length >= 2, String((messyHtml.match(/少了分号/g) || []).length));
+check("scanf / printf 写成尖括号会被指出来", /scanf 要用圆括号/.test(messyHtml) && /printf 要用圆括号/.test(messyHtml));
+check("每个问题都写了第几行", /第 1 行/.test(messyHtml) && /第 3 行/.test(messyHtml) && /第 5 行/.test(messyHtml) && /第 6 行/.test(messyHtml));
+check("这段代码绝不会被判成「没问题」", !/没有发现问题/.test(store["summary"].innerHTML) && /个错误/.test(store["summary"].innerHTML), store["summary"].innerHTML);
+
+store["code"].value = '#include <stdio.h>\n\nint main() {\n    int a, b;\n    scanf("%d %d", &a, &b);\n    printf("%d\\n", a + b);\n    return 0;\n}';
+store["code"].dispatch("input");
+store["stdin"].value = "3 4\n";
+flush();
+store["btn-check"].dispatch("click");
+check("正常完整的代码不会被这些新规则误报", /没有发现问题/.test(store["summary"].innerHTML), store["summary"].innerHTML);
+
+store["code"].value = '#include <stdio.h>\nint main() {\n    int a,\n        b;\n    scanf("%d %d", &a, &b);\n    printf("%d\\n", a + b);\n    return 0;\n}';
+store["code"].dispatch("input");
+flush();
+store["btn-check"].dispatch("click");
+check("跨行声明（int a, 换行 b;）不会被误判成少分号", !/少了分号/.test(store["findings"].innerHTML), store["findings"].innerHTML.slice(0, 120));
+
+console.log("=== 资源都带版本号（浏览器不会再拿旧缓存骗人） ===");
+const localUrls = [...html.matchAll(/(?:src|href)="(assets\/[^"]*)"/g)].map((m) => m[1]);
+check("主页面所有本地资源都带 ?v=", localUrls.length >= 8 && localUrls.every((u) => /\?v=/.test(u)), localUrls.filter((u) => !/\?v=/.test(u)).join(","));
+const boardUrls = [...boardPage.matchAll(/(?:src|href)="(assets\/[^"]*)"/g)].map((m) => m[1]);
+check("留言板页面的本地资源也带 ?v=", boardUrls.length >= 3 && boardUrls.every((u) => /\?v=/.test(u)), boardUrls.filter((u) => !/\?v=/.test(u)).join(","));
+check("按需加载的 xterm 也带版本号", /assets\/vendor\/xterm\.js\?v=/.test(readFileSync(path.join(root, "assets/js/app.js"), "utf8")));
+
 console.log("\n集成测试：" + ok + " 通过 / " + (ok + bad) + " 项");
 if (bad) process.exitCode = 1;
 

@@ -586,6 +586,52 @@
       }
     }
 
+    /* ---------- 13. 头文件名拼错 / 用了 PTA 没有的头文件 ---------- */
+    var HEADER_FIX = {
+      "studio.h": "stdio.h", "stdoi.h": "stdio.h", "stido.h": "stdio.h", "stdi.h": "stdio.h",
+      "stdiio.h": "stdio.h", "stduio.h": "stdio.h", "studio": "stdio.h", "stdio": "stdio.h",
+      "stdilb.h": "stdlib.h", "stdib.h": "stdlib.h", "stlib.h": "stdlib.h",
+      "sting.h": "string.h", "strig.h": "string.h", "string": "string.h",
+      "math": "math.h", "mat.h": "math.h"
+    };
+    var incRe = /#\s*include\s*[<"]([^>"]+)[>"]/g, im;
+    while ((im = incRe.exec(masked)) !== null) {
+      var header = im[1].trim();
+      if (HEADER_FIX[header]) {
+        add("error", im.index, "头文件名拼错了：" + header,
+          "C 语言里没有 " + header + " 这个头文件，你要用的应该是 " + HEADER_FIX[header] + "。头文件写错，里面的 scanf、printf 全都用不了。",
+          "把这一行改成 #include <" + HEADER_FIX[header] + ">。");
+      } else if (/^conio\.h$/i.test(header)) {
+        add("error", im.index, "PTA 上没有 conio.h",
+          "conio.h 是 Windows 上 Turbo C 才有的头文件，PTA 的判题环境里没有它，getch()、clrscr() 这些函数也不存在。",
+          "把 getch() 换成 getchar()，把 clrscr() 之类的整行删掉。");
+      }
+    }
+
+    /* ---------- 14. scanf / printf 写成了尖括号 ---------- */
+    var angleRe = /\b(scanf|printf|gets|puts|getchar|putchar)\s*</g, am;
+    while ((am = angleRe.exec(masked)) !== null) {
+      add("error", am.index, am[1] + " 要用圆括号，不是尖括号",
+        "函数调用必须写圆括号，例如 " + am[1] + "(...)。写成尖括号 " + am[1] + "<...> 编译器会直接报错。",
+        "把这一行的 " + am[1] + "<...> 改成 " + am[1] + "(...)，并检查参数之间用的是英文逗号。");
+    }
+
+    /* ---------- 15. 声明行结尾忘了分号 ---------- */
+    var typeAlt = TYPE_WORDS.join("|");
+    var declOnly = new RegExp("^\\s*(?:" + typeAlt + ")(?:\\s|\\*)+[A-Za-z_]\\w*(?:\\s*\\[\\s*\\w*\\s*\\])*(?:\\s*,\\s*[A-Za-z_]\\w*(?:\\s*\\[\\s*\\w*\\s*\\])*)*\\s*$");
+    var maskedLines = masked.split("\n");
+    var starts2 = lineStartsOf(src);
+    for (var li = 0; li < lines.length; li++) {
+      var ml = maskedLines[li] || "";
+      if (!declOnly.test(ml)) continue;
+      if (/,\s*$/.test(ml)) continue;              /* 结尾是逗号：多半是跨行的声明，不报 */
+      var prev = li > 0 ? (maskedLines[li - 1] || "") : "";
+      if (/[(,]\s*$/.test(prev)) continue;          /* 上一行还没写完，不报 */
+      add("error", starts2[li], "这一行结尾少了分号",
+        "C 语言每条语句结尾都要写英文分号 ; 。这里没写，编译器会把这一行和下一行连着读，然后报一堆看不懂的错。",
+        "在这一行末尾补一个分号 ;（要英文的）。");
+    }
+
     findings.sort(function (x, y) { return x.line - y.line || x.column - y.column; });
     return { findings: findings, symbols: symbols };
   }

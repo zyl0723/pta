@@ -740,7 +740,7 @@
     if (!document.head || typeof document.head.appendChild !== "function") { termState = "failed"; return; }
     termState = "loading";
     var s = document.createElement("script");
-    s.src = "assets/vendor/xterm.js";
+    s.src = "assets/vendor/xterm.js?v=20261011a";
     s.onload = function () { termState = "idle"; initTerminal(); };
     s.onerror = function () { termState = "failed"; };
     document.head.appendChild(s);
@@ -1538,3 +1538,4 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();
+

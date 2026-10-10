@@ -262,6 +262,22 @@
       res = { ok: false, message: (err && err.message) || String(err) };
     }
     if (res && res.ok) return [];
+    /* 预处理阶段就失败：多半是头文件名拼错（例如 studio.h） */
+    var raw = String((res && res.message) || "");
+    var lib = /cannot find library:\s*(\S+)/i.exec(raw);
+    if (lib) {
+      var lm = /^(\d+):(\d+)\s+/.exec(raw);
+      var lno = lm ? parseInt(lm[1], 10) : 1;
+      var srcLines = text.split("\n");
+      return [{
+        severity: "error", line: lno, column: lm ? parseInt(lm[2], 10) : null,
+        title: "找不到头文件：" + lib[1],
+        detail: "第 " + lno + " 行的 #include 里写的是 " + lib[1] + "，但内置解释器里没有这个头文件——十有八九是名字拼错了。PTA 基础题常用的只有 stdio.h、stdlib.h、string.h、math.h 这几个。",
+        fix: "检查这一行的头文件名：把 studio.h 改成 stdio.h，或者补齐 .h。",
+        snippet: String(srcLines[lno - 1] || "").replace(/\t/g, "    "),
+        fromEngine: true
+      }];
+    }
     var e = translate("ERROR: Parsing Failure:\n" + ((res && res.message) || ""), text);
     return [engineFinding(e, text)];
   }
