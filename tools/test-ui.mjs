@@ -210,6 +210,7 @@ check("提示词要求列出易错点", /容易出错的地方/.test(store["prom
 check("提示词要求严格按三段标题输出", /第 1 部分/.test(store["prompt-out"].value) && /第 2 部分/.test(store["prompt-out"].value) && /第 3 部分/.test(store["prompt-out"].value));
 check("默认难度是「简单」：说清读者是新手、目标最好懂", /答案难度：简单/.test(store["prompt-out"].value) && /刚学编程的新手/.test(store["prompt-out"].value) && /一眼能看懂/.test(store["prompt-out"].value));
 check("「简单」明确不要花哨写法", /不要用任何技巧/.test(store["prompt-out"].value) && /位运算 \/ 宏 \/ 递归/.test(store["prompt-out"].value) && /列表推导式 \/ lambda/.test(store["prompt-out"].value));
+check("「简单」还要：先讲思路、不用自定义函数、注释像跟同学说话", /先用一句话说清这道题的思路/.test(store["prompt-out"].value) && /不要写自定义函数/.test(store["prompt-out"].value) && /像跟同学说话/.test(store["prompt-out"].value) && /一律选好懂/.test(store["prompt-out"].value));
 check("提示词要求变量名一看就懂", /变量名用 a、b、n、i、sum/.test(store["prompt-out"].value));
 check("提示词带上自动检查出的错误点", /scanf/.test(store["prompt-out"].value), store["prompt-out"].value.slice(0, 120));
 check("提示词带上 PTA 批改提示", store["prompt-out"].value.indexOf("答案错误") >= 0);
@@ -869,6 +870,79 @@ check("留言板页不加载别的第三方脚本", /assets\/js\/board\.js/.test
 check("留言板有回主页面的链接", /href="index\.html"/.test(boardPage));
 check("署名文件与 README 里都写了 giscus", /giscus/.test(notices) && /giscus/.test(readme));
 check("主页面 CSP 依然严格（没有放行任何外部脚本）", /script-src 'self';/.test(html) && !/giscus\.app/.test(html));
+
+console.log("=== 检查要像编译器：不完整也报错、但不乱报 ===");
+store["code-lang"].value = "c";
+store["code-lang"].dispatch("change");
+flush();
+store["stdin"].value = "";
+
+store["code"].value = '#include <stdio.h>\nint main() {\n    int a = 1\n    printf("%d", a);\n    return 0;\n}';
+store["code"].dispatch("input");
+flush();
+store["btn-check"].dispatch("click");
+check("缺分号：检查结果里有语法错误，并写出第几行", /语法错误/.test(store["findings"].innerHTML) && /第 4 行/.test(store["findings"].innerHTML));
+check("缺分号：错误排在前面、汇总是「错误」", /个错误/.test(store["summary"].innerHTML) && /summary bad/.test(store["summary"].className), store["summary"].innerHTML);
+
+store["code"].value = '#include <stdio.h>\nint main() {\n    if (1) {\n        printf("hi");\n    return 0;\n}';
+store["code"].dispatch("input");
+flush();
+store["btn-check"].dispatch("click");
+check("括号不配对也能查出来", /语法错误/.test(store["findings"].innerHTML));
+
+store["code"].value = 'int a = 1;\nprintf("%d", a);\n';
+store["code"].dispatch("input");
+flush();
+store["btn-check"].dispatch("click");
+check("只贴一小段也报错，并提示语句要放进函数里", /语法错误/.test(store["findings"].innerHTML) && /没有看到函数定义/.test(store["findings"].innerHTML), store["findings"].innerHTML.slice(0, 140));
+
+store["code"].value = '#include <stdio.h>\nint main() {\n    int a = 1；\n    return 0;\n}';
+store["code"].dispatch("input");
+flush();
+store["btn-check"].dispatch("click");
+check("中文标点这种低级错误也能查出来", /中文标点|语法错误/.test(store["findings"].innerHTML));
+
+store["code"].value = '#include <stdio.h>\nint f() { return 1; }';
+store["code"].dispatch("input");
+flush();
+store["btn-check"].dispatch("click");
+check("没有 main 会明确说出来，不会假装没问题", /找不到 main 函数|缺少 main/.test(store["findings"].innerHTML), store["findings"].innerHTML.slice(0, 140));
+
+store["code"].value = '#include <stdio.h>\nint main() { int n; scanf("%d", n); printf("%d", n); return 0; }';
+store["code"].dispatch("input");
+store["stdin"].value = "5\n";
+flush();
+store["btn-check"].dispatch("click");
+check("漏 & 由试运行抓出来", /scanf 的参数要写变量地址|少了 &/.test(store["findings"].innerHTML), store["findings"].innerHTML.slice(0, 160));
+
+store["code"].value = '#include <stdio.h>\nint main() { int a[3]; a[5] = 1; printf("%d", a[0]); return 0; }';
+store["code"].dispatch("input");
+store["stdin"].value = "";
+flush();
+store["btn-check"].dispatch("click");
+check("数组越界能查出来（静态规则或试运行）", /越界/.test(store["findings"].innerHTML), store["findings"].innerHTML.slice(0, 160));
+
+store["code"].value = '#include <stdio.h>\nint main() { while (1) { } return 0; }';
+store["code"].dispatch("input");
+flush();
+store["btn-check"].dispatch("click");
+check("死循环只提醒，不算「错误」吓人", /程序跑不完/.test(store["findings"].innerHTML) && !/个错误/.test(store["summary"].innerHTML), store["summary"].innerHTML);
+
+store["code"].value = '#include <stdio.h>\nint main() { int a; scanf("%d", &a); printf("%d", a); return 0; }';
+store["code"].dispatch("input");
+store["stdin"].value = "";
+flush();
+store["btn-check"].dispatch("click");
+check("要输入但没填样例数据：不乱报运行期问题", /没有发现问题/.test(store["summary"].innerHTML), store["summary"].innerHTML);
+store["stdin"].value = "5\n";
+store["btn-check"].dispatch("click");
+check("补上样例数据再查，干净代码仍然干净", /没有发现问题/.test(store["summary"].innerHTML), store["summary"].innerHTML);
+
+store["code"].value = '#include <stdio.h>\n\nint main() {\n    int a, b;\n    scanf("%d %d", &a, &b);\n    printf("%d\\n", a + b);\n    return 0;\n}';
+store["code"].dispatch("input");
+flush();
+store["btn-check"].dispatch("click");
+check("完整正确代码：检查通过，并说明已经试跑过", /没有发现问题/.test(store["summary"].innerHTML) && /内置解释器试跑/.test(store["summary"].innerHTML), store["summary"].innerHTML);
 
 console.log("\n集成测试：" + ok + " 通过 / " + (ok + bad) + " 项");
 if (bad) process.exitCode = 1;

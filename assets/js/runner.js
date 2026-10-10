@@ -231,10 +231,88 @@
     return { match: false, whitespaceOnly: false, rows: rows, firstDiff: firstDiff };
   }
 
+  /* 把解释器给出的错误（translate 的结果）变成检查结果里的条目 */
+  function engineFinding(e, code) {
+    var lines = String(code == null ? "" : code).split("\n");
+    var line = parseInt(e && e.line, 10) || 0;
+    return {
+      severity: "error",
+      line: line || 1,
+      column: (e && e.column) || null,
+      title: (e && e.title) || "检查出问题",
+      detail: (e && e.detail) || "",
+      fix: (e && e.hint) || "",
+      snippet: line > 0 ? String(lines[line - 1] || "").replace(/\t/g, "    ") : "",
+      fromEngine: true
+    };
+  }
+
+  /* 只做「预处理 + 语法解析」，不执行 main：像编译器那样先把语法错误报出来。
+     代码不完整（少分号、括号没配对、语句写在函数外面）也会照实报，
+     不会因为「没写完整」就一律说没问题。 */
+  function checkSyntax(code) {
+    var engine = global.JSCPP;
+    if (!engine || typeof engine.parse !== "function") return null; /* 没有解析接口就跳过这一层 */
+    var text = String(code == null ? "" : code);
+    if (!text.trim()) return [];
+    var res;
+    try {
+      res = engine.parse(text);
+    } catch (err) {
+      res = { ok: false, message: (err && err.message) || String(err) };
+    }
+    if (res && res.ok) return [];
+    var e = translate("ERROR: Parsing Failure:\n" + ((res && res.message) || ""), text);
+    return [engineFinding(e, text)];
+  }
+
+  /* 试运行一次（给了样例数据就用样例数据）：变量没声明、漏 &、数组越界、缺少 main 这些真错误都能抓到。
+     两类不报：
+       - 「变量还没赋值」：多半只是因为这次没给输入，报出来是误报（静态规则里有专门的「声明了却从未赋值」）；
+       - 跑不完（超时）：可能是死循环，也可能只是在等输入，降级成提醒。 */
+  function checkByRun(code, stdin) {
+    var text = String(code == null ? "" : code);
+    if (!text.trim()) return [];
+    var input = stdin == null ? "" : String(stdin);
+    var res = run(text, input, { timeoutMs: 1500 });
+    if (res.ok) return [];
+    var e = res.error || {};
+    if (/method main is not defined|main is not defined/i.test(String(e.detail) + " " + String(e.title))) {
+      return [{
+        severity: "error", line: 1, column: null,
+        title: "缺少 main 函数（程序没有入口）",
+        detail: "解释器从头到尾没找到 main 函数，所以没办法开始运行。PTA 上的题一般要把代码放在 int main() { ... } 里面。",
+        fix: "补上 int main() { ... }，把要执行的语句放进去，最后写 return 0;",
+        snippet: (text.split("\n")[0] || "").replace(/\t/g, "    "),
+        fromEngine: true
+      }];
+    }
+    if (e.kind === "timeout") {
+      return [{
+        severity: "warning", line: 1, column: null,
+        title: "程序跑不完（超过 1.5 秒）",
+        detail: (e.detail || "") + " 如果只是想等输入，可以忽略这一条；如果确实写了死循环，就要改。",
+        fix: e.hint || "",
+        snippet: "",
+        fromEngine: true
+      }];
+    }
+    /* 读入类程序有个通病：没给输入（或给少了）时读到的是 EOF，变量就是随机值，
+       后面报出来的「变量没赋值 / 整数溢出」都是没输入造成的，属于误报，这里一律不报。
+       漏 &、数组越界、除以零这些是真错误，照报。 */
+    var readsInput = /\b(scanf|getchar|gets|fgets|getline)\s*\(/.test(text);
+    if (input.trim() === "" && readsInput) return [];
+    if (readsInput && /没有赋值|整数溢出|超出|overflow/i.test(String(e.detail) + " " + String(e.title))) return [];
+    if (/没有赋值/.test(String(e.detail))) return [];
+    return [engineFinding(e, text)];
+  }
+
   global.PTARunner = {
     run: run,
     translate: translate,
     compareOutput: compareOutput,
-    normalizeOut: normalizeOut
+    normalizeOut: normalizeOut,
+    checkSyntax: checkSyntax,
+    checkByRun: checkByRun
   };
 })(typeof window !== "undefined" ? window : globalThis);

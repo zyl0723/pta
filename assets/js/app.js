@@ -114,7 +114,7 @@
 
     $("btn-check").addEventListener("click", checkNow);
     $("btn-run").addEventListener("click", runNow);
-    $("btn-check-run").addEventListener("click", function () { analyzeNow(); runNow(); });
+    $("btn-check-run").addEventListener("click", function () { analyzeNow(true); runNow(); });
     $("btn-undo").addEventListener("click", function () { goHistory(-1); });
     $("btn-redo").addEventListener("click", function () { goHistory(1); });
     $("btn-clear").addEventListener("click", function () {
@@ -639,7 +639,7 @@
 
   /* 运行前的把关：先静态检查；有「错误」级问题就先别跑，把问题说清楚，再点一次才强行运行 */
   function runGate() {
-    analyzeNow();
+    analyzeNow(true);
     var errs = (state.findings || []).filter(function (f) { return f.severity === "error"; });
     if (!errs.length) { state.runForced = false; return { run: true, errors: [], forced: false }; }
     if (state.runForced) { state.runForced = false; return { run: true, errors: errs, forced: true }; }
@@ -835,7 +835,7 @@
       devWrite("$ 检查\n本机只装了 C 语言的检查规则：把语言换回 C 才能在这里检查，或者用右边的「答案与解析」交给你自己的 AI。");
       return;
     }
-    analyzeNow();
+    analyzeNow(true);
     var f = state.findings || [];
     if (!f.length) {
       devWrite("$ 检查\n检查通过：没有发现常见写法错误，可以运行了——先按题目样例输入数据，再点「运行」。");
@@ -853,7 +853,7 @@
   /* 工具栏上的「立即检查」：平时把结果写到右侧「检查结果」；全屏时右侧看不到，就把终端窗口弹出来写进去 */
   function checkNow() {
     if (codeFullOn()) { openFloat(); devCheck(); return; }
-    analyzeNow();
+    analyzeNow(true);
   }
 
   function devRun() {
@@ -1249,7 +1249,7 @@
   }
 
   /* ---------- 静态检查 ---------- */
-  function analyzeNow() {
+  function analyzeNow(deep) {
     exitRecheck();
     if (curLang() !== "c") {
       state.findings = [];
@@ -1264,9 +1264,64 @@
     } catch (err) {
       console.error(err);
     }
-    state.findings = result.findings;
+    var list = result.findings || [];
+    /* 再叠两层「真」检查，这样代码不完整也照样能报出真错误：
+       ① 语法层（真解析，边打字就能跑）——少分号、括号不配对、语句写在函数外面……
+       ② 试运行层（点「立即检查」/「运行」时跑一遍）——变量没声明、漏 &、数组越界、缺少 main…… */
+    list = mergeEngineFindings(list, safeEngineCheck("syntax", code));
+    if (deep) list = mergeEngineFindings(list, safeEngineCheck("run", code));
+    state.findings = sortFindings(list);
+    state.lastCheckDeep = !!deep;
     refreshGutter();
     renderFindings();
+  }
+
+  function safeEngineCheck(kind, code) {
+    try {
+      if (kind === "syntax") return runner.checkSyntax ? runner.checkSyntax(code) : null;
+      return runner.checkByRun ? runner.checkByRun(code, $("stdin").value) : null;
+    } catch (err) {
+      console.error(err);
+      return null;
+    }
+  }
+
+  /* 把解释器查出来的问题并进检查结果：同一行已经静态查出问题了就不重复报 */
+  function mergeEngineFindings(base, extra) {
+    if (!extra || !extra.length) return base;
+    var out = (base || []).slice();
+    for (var i = 0; i < extra.length; i++) {
+      var e = extra[i];
+      var dup = false;
+      for (var j = 0; j < out.length; j++) {
+        if (out[j].line === e.line) { dup = true; break; }
+      }
+      if (!dup) out.push(e);
+    }
+    return out;
+  }
+
+  /* 报错发生在「整段代码里根本没有函数」的情况下，补一句更直白的提示 */
+  function refineFragmentFinding(f) {
+    if (!f || !/语法错误/.test(String(f.title))) return f;
+    var masked = (analyzer && analyzer.maskCode) ? analyzer.maskCode(String($("code").value)) : "";
+    if (!masked || /\w+\s*\([^)]*\)\s*\{/.test(masked)) return f;
+    return {
+      severity: f.severity, line: f.line, column: f.column, title: f.title,
+      detail: f.detail + "\n另外：这段代码里没有看到函数定义——PTA 上的题一般要把语句写在 int main() { ... } 里面，现在可能只是贴了一小段。",
+      fix: f.fix, snippet: f.snippet, fromEngine: f.fromEngine
+    };
+  }
+
+  /* 错误排前面，然后按行号从小到大 */
+  function sortFindings(list) {
+    var rank = { error: 0, warning: 1, info: 2 };
+    return (list || []).map(refineFragmentFinding).sort(function (a, b) {
+      var ra = rank[a.severity] == null ? 3 : rank[a.severity];
+      var rb = rank[b.severity] == null ? 3 : rank[b.severity];
+      if (ra !== rb) return ra - rb;
+      return (a.line || 0) - (b.line || 0);
+    });
   }
 
   /* 选了非 C 语言：本地没有对应的检查规则，直接说清楚，别拿 C 的规则乱报 */
@@ -1288,7 +1343,9 @@
 
     if (list.length === 0) {
       summary.className = "summary ok";
-      summary.innerHTML = "静态检查没有发现问题。可以点“运行并对比”用样例数据实测一下。";
+      summary.innerHTML = (state.lastCheckDeep
+        ? "本地检查（语法 + 常见写法 + 内置解释器试跑）没有发现问题。"
+        : "没有发现问题：语法能解析，常见写法也没毛病。") + "可以点“运行并对比”用样例数据实测一下。";
     } else {
       summary.className = "summary " + (errors ? "bad" : (warns ? "warn" : "note"));
       var parts = [];
@@ -1299,7 +1356,9 @@
     }
 
     if (list.length === 0) {
-      box.innerHTML = '<div class="empty">这个文件里没有发现常见错误。注意：静态检查只能发现典型写法问题，逻辑是否正确还要靠运行样例来验证。</div>';
+      box.innerHTML = '<div class="empty">没查出问题：语法能解析、常见写法也没毛病'
+        + (state.lastCheckDeep ? "，并且已经用内置解释器试跑过一次" : "（点「立即检查」还会真的试跑一遍）")
+        + '。注意：逻辑对不对最终要靠题目样例实测——点「运行并对比」。</div>';
       return;
     }
 
