@@ -754,6 +754,51 @@ store["btn-float-close"].dispatch("click");
 
 delete sandbox.Xterm;
 
+console.log("=== 题目旁的「清空题目」 ===");
+check("「生成答案与解析」右边多了「清空题目」", /id="btn-clear-problem"/.test(html) && html.indexOf('id="btn-answer"') < html.indexOf('id="btn-clear-problem"'));
+store["problem-text"].value = "7-1 两数求和\n输入两个整数，输出它们的和。";
+store["pta-feedback"].value = "测试点 2　答案错误";
+let problemFocused = 0;
+store["problem-text"].focus = function () { problemFocused++; };
+store["btn-clear-problem"].dispatch("click");
+check("点一下题目框就清空了", store["problem-text"].value === "", store["problem-text"].value.slice(0, 30));
+check("只清题目，不动「应用修改」", store["pta-feedback"].value === "测试点 2　答案错误");
+check("清空后光标回到题目框，方便直接粘下一题", problemFocused === 1);
+
+console.log("=== 代码的「上一步 / 下一步」 ===");
+check("代码工具栏里有这两个按钮", /id="btn-undo"/.test(html) && /id="btn-redo"/.test(html) && html.indexOf('id="btn-check-run"') < html.indexOf('id="btn-undo"') && html.indexOf('id="btn-undo"') < html.indexOf('id="btn-redo"'));
+check("按钮写着「上一步 / 下一步」并带快捷键提示", /↶ 上一步/.test(html) && /下一步 ↷/.test(html) && /Ctrl\+Z/.test(html) && /Ctrl\+Y/.test(html));
+/* 重新进一次页面，从「刚打开」的状态开始验证 */
+for (const el of Object.values(store)) { el.classList._s.clear(); el._handlers = {}; }
+vm.runInContext(readFileSync(path.join(root, "assets/js/app.js"), "utf8"), sandbox, { filename: "app.js" });
+flush();
+check("刚打开时两个按钮都是灰的", store["btn-undo"].disabled && store["btn-redo"].disabled);
+
+const beforeEdit = store["code"].value;
+store["code"].value = '#include <stdio.h>\nint main(){ printf("a"); return 0; }';
+store["code"].dispatch("input");
+flush();
+check("改过代码以后「上一步」变可用", !store["btn-undo"].disabled && store["btn-redo"].disabled);
+store["btn-undo"].dispatch("click");
+check("点「上一步」回到改动前", store["code"].value === beforeEdit, store["code"].value.slice(0, 40));
+check("退回去以后「下一步」变可用", !store["btn-redo"].disabled && store["btn-undo"].disabled);
+store["btn-redo"].dispatch("click");
+check("点「下一步」回到改动后", store["code"].value === '#include <stdio.h>\nint main(){ printf("a"); return 0; }');
+
+store["btn-clear"].dispatch("click");
+check("「清空」这一步也能撤回", store["code"].value === "" && !store["btn-undo"].disabled);
+store["btn-undo"].dispatch("click");
+check("撤回后内容回来了", store["code"].value === '#include <stdio.h>\nint main(){ printf("a"); return 0; }', store["code"].value.slice(0, 40));
+
+store["code"].value = "int main(){ return 0; }";
+store["code"].dispatch("input");
+flush();
+store["code"].dispatch("keydown", { key: "z", ctrlKey: true, preventDefault() {} });
+check("Ctrl+Z 也能撤回", store["code"].value !== "int main(){ return 0; }", store["code"].value.slice(0, 40));
+store["code"].dispatch("keydown", { key: "y", ctrlKey: true, preventDefault() {} });
+check("Ctrl+Y 也能前进", store["code"].value === "int main(){ return 0; }", store["code"].value.slice(0, 40));
+store["btn-undo"].dispatch("click");
+
 console.log("\n集成测试：" + ok + " 通过 / " + (ok + bad) + " 项");
 if (bad) process.exitCode = 1;
 

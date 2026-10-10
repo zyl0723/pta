@@ -66,6 +66,7 @@
     loadLangAndLevel();
     $("code").value = starterFor(curLang());
     applyLangAndLevel();
+    snapshotCode(); /* 记下起始状态，撤销可以退到这里 */
     fillProblemSelect();
     bindEvents();
     initWelcome();
@@ -85,6 +86,7 @@
     code.addEventListener("input", function () {
       state.runForced = false;
       refreshGutter();
+      scheduleSnapshot();
       if (state.aiCheckMode) { markRecheckStale(); return; }
       if (state.timer) clearTimeout(state.timer);
       state.timer = setTimeout(analyzeNow, 260);
@@ -101,22 +103,38 @@
         insertAtCursor(code, "    ");
         refreshGutter();
         analyzeNow();
+        flushSnapshot();
+        return;
       }
+      if (!(e.ctrlKey || e.metaKey)) return;
+      var k = String(e.key || "").toLowerCase();
+      if (k === "z" && !e.shiftKey) { e.preventDefault(); goHistory(-1); return; }
+      if (k === "y" || (k === "z" && e.shiftKey)) { e.preventDefault(); goHistory(1); }
     });
 
     $("btn-check").addEventListener("click", checkNow);
     $("btn-run").addEventListener("click", runNow);
     $("btn-check-run").addEventListener("click", function () { analyzeNow(); runNow(); });
+    $("btn-undo").addEventListener("click", function () { goHistory(-1); });
+    $("btn-redo").addEventListener("click", function () { goHistory(1); });
     $("btn-clear").addEventListener("click", function () {
       $("code").value = "";
       refreshGutter();
       analyzeNow();
+      flushSnapshot();
       $("code").focus();
     });
     $("btn-sample").addEventListener("click", function () {
       $("code").value = starterFor(curLang());
       refreshGutter();
       analyzeNow();
+      flushSnapshot();
+    });
+    $("btn-clear-problem").addEventListener("click", function () {
+      var box = $("problem-text");
+      if (!box) return;
+      box.value = "";
+      if (typeof box.focus === "function") box.focus();
     });
     $("code-lang").addEventListener("change", onLangChange);
     $("answer-level").addEventListener("change", onLevelChange);
@@ -313,12 +331,65 @@
     applyLangAndLevel();
     refreshGutter();
     analyzeNow();
+    flushSnapshot();
     if (box && typeof box.focus === "function") box.focus();
   }
 
   function onLevelChange() {
     lsSet(LEVEL_KEY, curLevel());
     applyLangAndLevel();
+  }
+
+  /* ---------- 代码编辑的上一步 / 下一步：手误也能退回去 ---------- */
+  var history = { stack: [], index: -1, timer: null, limit: 60 };
+
+  function syncHistoryButtons() {
+    var undo = $("btn-undo");
+    var redo = $("btn-redo");
+    if (undo) undo.disabled = history.index <= 0;
+    if (redo) redo.disabled = history.index >= history.stack.length - 1;
+  }
+
+  function snapshotCode() {
+    var box = $("code");
+    if (!box) return;
+    var value = box.value;
+    if (history.index >= 0 && history.stack[history.index].value === value) return;
+    if (history.index < history.stack.length - 1) history.stack = history.stack.slice(0, history.index + 1);
+    history.stack.push({ value: value, start: box.selectionStart || 0, end: box.selectionEnd || 0 });
+    if (history.stack.length > history.limit) history.stack.shift();
+    history.index = history.stack.length - 1;
+    syncHistoryButtons();
+  }
+
+  /* 打字时不要每敲一下都记一条，停手一下再记 */
+  function scheduleSnapshot() {
+    if (history.timer) clearTimeout(history.timer);
+    history.timer = setTimeout(function () { history.timer = null; snapshotCode(); }, 350);
+  }
+
+  function flushSnapshot() {
+    if (history.timer) { clearTimeout(history.timer); history.timer = null; }
+    snapshotCode();
+  }
+
+  function goHistory(step) {
+    var box = $("code");
+    if (!box) return;
+    flushSnapshot(); /* 先把当前内容记下来，免得刚打的字丢了 */
+    var next = history.index + step;
+    if (next < 0 || next >= history.stack.length) return;
+    history.index = next;
+    var snap = history.stack[history.index];
+    box.value = snap.value;
+    if (typeof box.setSelectionRange === "function") {
+      try { box.setSelectionRange(snap.start, snap.end); } catch (err) { /* 无所谓 */ }
+    }
+    state.runForced = false;
+    refreshGutter();
+    analyzeNow();
+    syncHistoryButtons();
+    if (typeof box.focus === "function") box.focus();
   }
 
   /* ---------- 提示词：本页面不联网，只把文本拼好交给使用者自己的 AI ---------- */
