@@ -1,6 +1,6 @@
 # C 语言习题检查器
 
-> 作者：**zyl0723**（<https://github.com/zyl0723>）。本仓库自有代码版权归作者所有；用到的第三方组件（JSCPP 2.0.9、lodash 4.18.1、pegjs-util 1.4.21、printf 0.6.1、PEG.js 0.9.0，均为 MIT）许可见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
+> 作者：**zyl0723**（<https://github.com/zyl0723>）。本仓库自有代码版权归作者所有；用到的第三方组件（JSCPP 2.0.9、lodash 4.18.1、pegjs-util 1.4.21、printf 0.6.1、PEG.js 0.9.0、xterm.js 6.0.0，均为 MIT）许可见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
 
 一个纯前端网页工具，用来检查 PTA 平台上 C 语言基础题的代码。粘贴代码后，它会**直白地指出问题出在哪一行、为什么错、怎么改**，并且能**真的把代码跑起来**，把运行结果和题目要求的输出逐行对比。
 
@@ -24,7 +24,7 @@
 10. **二次检查**：拿你生成的那份答案当标准，用你自己的 AI 把「你的代码」再对照着重查一遍，结果**覆盖**右侧「检查结果」；每改一次代码，点一下「二次检查」刷新。
 11. **三段式答案 + 全屏**：「答案与解析」按「① 纯答案代码 / ② 代码 + 逐行注释 / ③ 容易出错的地方」分成三个框，背景**从淡粉到深粉逐段加深**，每段各有一个复制按钮；右上角「放大到全屏」可以把答案框铺满整屏，方便一行行对着看。
 12. **网站使用提示**：「你的代码」面板右上角的「网站使用提示」按钮掌控各模块的说明文字——点一下把说明全部收起，界面只剩输入框和按钮，看着不眼花；再点一下显示回来。收起状态记在你自己浏览器里（`localStorage`，键名 `pta-hints-off`），下次打开保持上次的选择。
-13. **全屏小工作台**：「你的代码」右上角的「放大到全屏」把编辑器铺满整屏，下面多出一个简易终端：按题目样例输入数据、点「运行」就能跑，每次结果都连着输入一行行记在终端里；终端里的「检查」会把静态检查的结果也打进去。终端与「用样例数据实测」共用同一份输入、同一份运行结果，退出全屏看到的是同一个东西；按 Esc 也能退出全屏。
+13. **全屏小工作台**：「你的代码」右上角的「放大到全屏」把编辑器铺满整屏，下面多出一个终端（用的是开源库 [xterm.js](https://github.com/xtermjs/xterm.js)，MIT）：在终端里直接打字，回车＝把这行加进输入、空着回车＝运行、退格删字、Ctrl+C 清掉当前行；工具栏上的「检查」会把静态检查的结果也打进终端。终端与「用样例数据实测」共用同一份输入、同一份运行结果，退出全屏看到的是同一个东西；按 Esc 也能退出全屏。xterm.js 只有进全屏时才按需加载，首屏不会因此变大；如果它没加载出来，会自动退回页面自带的简易终端。
 14. **语言 + 难度（最高优先级）**：「你的代码」右上角有两个下拉框——**语言**（C 语言 / Python / C++ / Java）和**答案难度**（简单 / 中等 / 困难）。选完以后，页面里的答案与解析、练习、翻译、二次检查全都按这两个选择来：拼好的提示词里会写明「用哪种语言、给谁看的什么难度」。
 
 - **难度**：`简单`＝只给新手能一眼看懂的写法（不用任何技巧）；`中等`＝简洁一些，允许用一点基础技巧（拆函数、常用库函数）；`困难`＝直接给最快最好用的写法（算法、标准库工具都用上，不照顾可读性、不绕弯子）。
@@ -166,8 +166,10 @@ npx serve .
 只有在改动 `tools/patch/` 或 `tools/shim/` 时才需要重建：
 
 ```bash
-npm install          # 首次需要，安装 JSCPP 与 esbuild
-npm run build:engine # 重新生成 assets/vendor/jscpp.js
+npm install            # 首次需要，安装 JSCPP、xterm.js 与 esbuild
+npm run build:engine   # 重新生成 assets/vendor/jscpp.js（C 解释器）
+npm run build:terminal # 重新生成 assets/vendor/xterm.js 与 xterm.css（终端）
+npm run build:vendor   # 上面两个一起跑
 ```
 
 构建产物已提交到仓库，普通使用无需重新构建。
@@ -225,12 +227,12 @@ tools/                  构建脚本、补丁、测试
 
 - 作者：**zyl0723**（<https://github.com/zyl0723>）。
 - 自有代码：页面（`index.html`、`assets/css/`、`assets/js/app.js`）、静态检查规则引擎（`assets/js/analyzer.js`）、运行与输出对比（`assets/js/runner.js`）、题库（`assets/js/problems.js`）、提示词拼装（`assets/js/prompt.js`）、自带 API Key 的对话客户端（`assets/js/aiclient.js`）、猫咪图标（`assets/img/logo-cat.svg`，作者手绘的 SVG）、构建脚本与解释器补丁（`tools/`）、测试与文档，均由作者编写。
-- 第三方只有一类：**随产物分发**的（JSCPP 等，见 THIRD-PARTY-NOTICES.md 第二节，已附许可全文与修改声明）。进站提示弹窗、页面样式、API 客户端都是作者手写的原生 HTML/CSS/JS，没有引入任何第三方 UI 库或 SDK。
+- 第三方只有一类：**随产物分发**的（JSCPP 与 xterm.js，见 THIRD-PARTY-NOTICES.md 第二节，已附许可全文与修改声明）。进站提示弹窗、页面样式、API 客户端都是作者手写的原生 HTML/CSS/JS；第三方库里只有 xterm.js 用在了界面上（全屏工作台的终端），而且只有进全屏时才按需加载。
 - 自有代码目前未声明开源许可，保留所有权利。
 
 ### 第三方署名清单（一个不落）
 
-仓库里唯一包含第三方代码的文件是 `assets/vendor/jscpp.js`（由 `npm run build:engine` 生成的构建产物）。它打包了下面这些组件，**全部是 MIT 许可**——MIT 明确允许任何人使用、修改、再分发，条件只是「保留版权声明与许可全文」，本仓库已满足该条件：
+仓库里包含第三方代码的文件只有两个构建产物：`assets/vendor/jscpp.js`（`npm run build:engine`，C 语言解释器）和 `assets/vendor/xterm.js` + `assets/vendor/xterm.css`（`npm run build:terminal`，终端）。它们打包／复制了下面这些组件，**全部是 MIT 许可**——MIT 明确允许任何人使用、修改、再分发，条件只是「保留版权声明与许可全文」，本仓库已满足该条件：
 
 | 组件 | 版本 | 版权归属 | 用途 |
 | --- | --- | --- | --- |
@@ -239,6 +241,7 @@ tools/                  构建脚本、补丁、测试
 | pegjs-util | 1.4.21 | Dr. Ralf S. Engelschall | JSCPP 解析 C 源码时的辅助库 |
 | printf | 0.6.1 | Copyright (c) 2008 Adaltas | JSCPP 的 printf 实现 |
 | PEG.js | 0.9.0（仅作生成器） | Copyright (c) 2010-2016 David Majda | JSCPP 的「C 语法 / 预处理」解析器由它生成，生成代码随 JSCPP 一起打包 |
+| @xterm/xterm | 6.0.0 | Copyright (c) 2017-2019 The xterm.js authors；Copyright (c) 2014-2016 SourceLair Private Company；Copyright (c) 2012-2013 Christopher Jeffrey | 全屏工作台的终端；**未修改**其源码，只打包压缩（样式原样复制） |
 
 - 每个组件的**完整许可全文与版权行**见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) 第四节。
 - 对 JSCPP 的修改（scanf 读取修复、`EOF` 取值、printf 类型映射等）已按 MIT 要求在 THIRD-PARTY-NOTICES.md 第二节明确声明。

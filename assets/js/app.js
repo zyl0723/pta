@@ -515,11 +515,14 @@
     box.scrollTop = box.scrollHeight;
   }
 
-  function devWrite(text) {
+  /* 终端日志：同时写进 <pre>（复制/降级用）和 xterm 终端（如果加载成功）。
+     opts.skipTerm：这一条只是给 <pre> 记个echo，终端里用户已经自己打出来了，别再写一遍。 */
+  function devWrite(text, opts) {
     devLog.push(String(text));
     var all = devLog.join("\n");
     if (all.length > DEV_LOG_LIMIT) devLog = [all.slice(all.length - DEV_LOG_LIMIT)];
     renderDevLog();
+    if (term && !(opts && opts.skipTerm)) term.write(String(text).replace(/\n/g, "\r\n") + "\r\n");
   }
 
   function setCodeFull(on) {
@@ -535,22 +538,100 @@
     if (btn) btn.textContent = on ? "退出全屏" : "放大到全屏";
     if (!on) return;
     if (!devLog.length) devWrite("终端已就绪：上面写代码，下面按题目样例输入数据，点「运行」看结果。");
+    loadTerminal();
+    if (term) { term.write("> "); focusTerminal(); return; }
     var box = $("dev-input");
     if (box && typeof box.focus === "function") box.focus();
   }
 
   function toggleCodeFull() { setCodeFull(!codeFullOn()); }
 
+  /* ---------- 终端：加载 xterm.js（开源库，MIT，见 THIRD-PARTY-NOTICES.md）----------
+     按需加载：只有进全屏才去取这个文件，首屏不受影响。加载失败就退回上面那个简易终端。 */
+  var term = null;
+  var termState = "idle"; /* idle | loading | ready | failed */
+  var termLine = "";
+
+  function loadTerminal() {
+    if (termState !== "idle") return;
+    if (!document.head || typeof document.head.appendChild !== "function") { termState = "failed"; return; }
+    termState = "loading";
+    var s = document.createElement("script");
+    s.src = "assets/vendor/xterm.js";
+    s.onload = function () { termState = "idle"; initTerminal(); };
+    s.onerror = function () { termState = "failed"; };
+    document.head.appendChild(s);
+  }
+
+  function initTerminal() {
+    var host = $("dev-term");
+    if (!window.Xterm || !window.Xterm.Terminal || !host || typeof host.appendChild !== "function") {
+      termState = "failed";
+      return;
+    }
+    try {
+      term = new window.Xterm.Terminal({
+        convertEol: true, cursorBlink: true, scrollback: 2000, fontSize: 13,
+        fontFamily: 'ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace',
+        theme: { background: "#3a2630", foreground: "#f6e9ef", cursor: "#f6e9ef", selectionBackground: "#6b4257" }
+      });
+      term.open(host);
+      term.onData(onTermData);
+      termState = "ready";
+      var dev = $("dev");
+      if (dev) dev.classList.add("term-on");
+      if (devLog.length) term.write(devLog.join("\r\n") + "\r\n");
+      term.write("> ");
+      focusTerminal();
+    } catch (err) {
+      term = null;
+      termState = "failed";
+    }
+  }
+
+  function focusTerminal() {
+    if (!term) return;
+    if (typeof term.focus === "function") { try { term.focus(); } catch (err) { /* 无所谓 */ } }
+  }
+
+  /* 终端里直接打字：回车＝加一行输入；空行回车＝运行；退格删字；Ctrl+C 清掉当前行 */
+  function onTermData(data) {
+    var s = String(data == null ? "" : data);
+    for (var i = 0; i < s.length; i++) {
+      var ch = s.charAt(i);
+      if (ch === "\r" || ch === "\n") {
+        term.write("\r\n");
+        var line = termLine;
+        termLine = "";
+        if (line.trim()) appendStdin(line);
+        else devRun();
+        term.write("> ");
+      } else if (ch === "\u007f" || ch === "\b") {
+        if (termLine.length) { termLine = termLine.slice(0, -1); term.write("\b \b"); }
+      } else if (ch === "\u0003") {
+        termLine = "";
+        term.write("^C\r\n> ");
+      } else if (ch >= " ") {
+        termLine += ch;
+        term.write(ch);
+      }
+    }
+  }
+
   /* 终端里加一行输入：写进「用样例数据实测」的程序输入框，两边保持同一份内容 */
+  function appendStdin(line) {
+    if (!line) return;
+    var cur = $("stdin").value;
+    $("stdin").value = (cur === "" || /\n$/.test(cur) ? cur : cur + "\n") + line + "\n";
+    devWrite("> " + line, { skipTerm: true });
+  }
+
   function addDevInput() {
     var box = $("dev-input");
     if (!box) return;
     var line = String(box.value).replace(/\s+$/, "");
     box.value = "";
-    if (!line) return;
-    var cur = $("stdin").value;
-    $("stdin").value = (cur === "" || /\n$/.test(cur) ? cur : cur + "\n") + line + "\n";
-    devWrite("> " + line);
+    appendStdin(line);
   }
 
   function onDevInputKey(e) {

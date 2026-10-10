@@ -30,6 +30,7 @@ function El(id) {
     },
     addEventListener(type, fn) { (this._handlers[type] = this._handlers[type] || []).push(fn); },
     dispatch(type, ev) { (this._handlers[type] || []).forEach(fn => fn(ev || {})); },
+    appendChild() {}, removeChild() {},
     querySelectorAll() { return []; },
     getAttribute() { return null; }, setAttribute() {},
     focus() {}, select() {}, setSelectionRange() {}, scrollIntoView() {}
@@ -49,6 +50,7 @@ const document = {
   addEventListener(type, fn) { (docHandlers[type] = docHandlers[type] || []).push(fn); },
   removeEventListener(type, fn) { docHandlers[type] = (docHandlers[type] || []).filter((h) => h !== fn); },
   dispatch(type, ev) { (docHandlers[type] || []).slice().forEach((fn) => fn(ev || {})); },
+  head: { appendChild(el) { if (el && typeof el.onload === "function") el.onload(); } },
   querySelectorAll() { return []; },
   createElement: () => El("tmp"),
   execCommand: () => true,
@@ -613,6 +615,61 @@ check("检查结果面板不再吸附（sticky 会盖住紧随其后的面板）
 check("样式里不再给结果面板设 sticky", !/\.panel\.sticky\s*\{/.test(css));
 check("错误列表有最大高度，长列表只在自己框内滚动", /\.findings\s*\{[^}]*max-height/.test(css));
 check("题目/反馈面板紧跟在检查结果面板之后（同级）", /id="findings"[\s\S]{0,1200}?id="problem-text"/.test(html));
+
+console.log("=== 终端：用 xterm.js（署名 + 接线都要对） ===");
+const xtermSrc = readFileSync(path.join(root, "assets/vendor/xterm.js"), "utf8");
+const xtermCss = readFileSync(path.join(root, "assets/vendor/xterm.css"), "utf8");
+const notices = readFileSync(path.join(root, "THIRD-PARTY-NOTICES.md"), "utf8");
+const readme = readFileSync(path.join(root, "README.md"), "utf8");
+const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
+check("产物里带着 xterm.js 的署名 banner", /xterm\.js/.test(xtermSrc.slice(0, 600)) && /MIT/.test(xtermSrc.slice(0, 600)));
+check("署名里三个版权方都写了", /The xterm\.js authors/.test(xtermSrc.slice(0, 900)) && /SourceLair/.test(xtermSrc.slice(0, 900)) && /Christopher Jeffrey/.test(xtermSrc.slice(0, 900)));
+check("xterm 的样式也带署名", /xterm\.js authors/.test(xtermCss.slice(0, 400)) && /THIRD-PARTY-NOTICES\.md/.test(xtermCss.slice(0, 400)));
+check("xterm.js 不依赖 eval（严格 CSP 下能用）", !/new Function/.test(xtermSrc) && !/\beval\(/.test(xtermSrc));
+check("页面引了 xterm 的样式", /assets\/vendor\/xterm\.css/.test(html));
+check("app.js 按需加载 xterm.js", /assets\/vendor\/xterm\.js/.test(readFileSync(path.join(root, "assets/js/app.js"), "utf8")));
+check("打包脚本能重新生成它", /build:terminal/.test(readFileSync(path.join(root, "package.json"), "utf8")) && typeof pkg.dependencies["@xterm/xterm"] === "string");
+check("署名文件里有 xterm.js 的条目与许可", /@xterm\/xterm/.test(notices) && /### @xterm\/xterm/.test(notices) && /The xterm\.js authors/.test(notices));
+check("README 的第三方清单里也列了它", /@xterm\/xterm/.test(readme) && /xterm\.js/.test(readme));
+
+/* 用一个假的 xterm 驱动一遍终端接线：打字、回车加输入、空回车运行、退格、Ctrl+C */
+const fakeTerm = {
+  openedHost: null, written: "", dataHandler: null, focusCount: 0,
+  open(el) { this.openedHost = el; },
+  write(s) { this.written += s; },
+  onData(fn) { this.dataHandler = fn; },
+  focus() { this.focusCount++; }
+};
+sandbox.Xterm = { Terminal: function () { return fakeTerm; } };
+for (const el of Object.values(store)) { el.classList._s.clear(); el._handlers = {}; }
+vm.runInContext(readFileSync(path.join(root, "assets/js/app.js"), "utf8"), sandbox, { filename: "app.js" });
+flush();
+store["code"].value = '#include <stdio.h>\nint main(void){ int a,b; scanf("%d %d", &a, &b); printf("%d\\n", a+b); return 0; }';
+store["code"].dispatch("input");
+flush();
+store["stdin"].value = "";
+store["btn-code-full"].dispatch("click");
+check("进全屏时装上终端并渲染到 #dev-term", fakeTerm.openedHost === store["dev-term"] && store["dev"].classList.contains("term-on"));
+check("终端里有就绪提示和提示符", /终端已就绪/.test(fakeTerm.written) && /> $/.test(fakeTerm.written), JSON.stringify(fakeTerm.written.slice(-30)));
+check("用上终端后原来的简易终端收起来（样式里控制）", /\.dev\.term-on \.dev-out/.test(css) && /\.dev\.term-on \.dev-input-row/.test(css));
+check("终端拿到一次焦点", fakeTerm.focusCount >= 1);
+
+fakeTerm.dataHandler("3 4\r");
+check("终端里打一行回车＝加进程序输入", store["stdin"].value === "3 4\n", JSON.stringify(store["stdin"].value));
+check("终端里的这一行同时记进日志（供复制）", /> 3 4/.test(store["dev-out"].textContent));
+const beforeRun = store["dev-out"].textContent.length;
+fakeTerm.dataHandler("\r");
+flush();
+check("终端里空行回车＝运行并出结果", store["dev-out"].textContent.length > beforeRun && /\[结束\]/.test(store["dev-out"].textContent) && /\n7\n/.test(store["dev-out"].textContent), store["dev-out"].textContent.slice(-90));
+fakeTerm.dataHandler("9");
+fakeTerm.dataHandler("\u007f\u007f");
+fakeTerm.dataHandler("5\r");
+check("终端里退格能删字（删干净后加 5 只留下 5）", store["stdin"].value.endsWith("5\n") && !store["stdin"].value.endsWith("95\n"), JSON.stringify(store["stdin"].value.slice(-8)));
+const beforeCtrlC = store["stdin"].value.length;
+fakeTerm.dataHandler("x\u0003");
+check("Ctrl+C 丢掉当前行、不写进输入", store["stdin"].value.length === beforeCtrlC);
+store["btn-dev-exit"].dispatch("click");
+delete sandbox.Xterm;
 
 console.log("\n集成测试：" + ok + " 通过 / " + (ok + bad) + " 项");
 if (bad) process.exitCode = 1;

@@ -6,6 +6,8 @@
   "scripts": {
     "serve": "node tools/serve.mjs",
     "build:engine": "node tools/build-jscpp.mjs",
+    "build:terminal": "node tools/build-xterm.mjs",
+    "build:vendor": "npm run build:engine && npm run build:terminal",
     "verify:analyzer": "node tools/test-analyzer.mjs && node tools/test-analyzer2.mjs",
     "verify:engine": "node tools/conformance.mjs",
     "verify:problems": "node tools/verify-problems.mjs",
@@ -14,6 +16,7 @@
     "test": "npm run verify:analyzer && npm run verify:engine && npm run verify:problems && npm run verify:aiclient && npm run verify:ui"
   },
   "dependencies": {
+    "@xterm/xterm": "^6.0.0",
     "JSCPP": "^2.0.9"
   },
   "devDependencies": {

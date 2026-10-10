@@ -8,6 +8,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src *; form-action 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'">
     <link rel="icon" type="image/svg+xml" href="assets/img/logo-cat.svg">
     <link rel="stylesheet" href="assets/css/styles.css">
+    <link rel="stylesheet" href="assets/vendor/xterm.css">
 </head>
 <body>
 
@@ -90,6 +91,8 @@
           </div>
         </div>
         <pre id="dev-out" class="dev-out"></pre>
+        <div id="dev-term" class="dev-term" aria-label="终端"></div>
+        <p class="dev-note" id="dev-term-note">终端里可以直接打字：回车＝把这行加进上面的输入，空着回车＝运行；退格可以删字，Ctrl+C 清掉当前这一行。这个终端用的是开源库 xterm.js（MIT）。</p>
         <div class="dev-input-row">
           <span class="dev-prompt">&gt;</span>
           <input id="dev-input" class="input dev-input" spellcheck="false" autocomplete="off" placeholder="按题目样例一组一组输入，回车加一行；空着直接回车就运行（Ctrl+Enter 也是运行）">

@@ -16,11 +16,16 @@
 - `tools/conformance.mjs`、`tools/verify-problems.mjs`、`tools/test-*.mjs`：测试与校验脚本
 - `README.md`、`THIRD-PARTY-NOTICES.md`：文档
 
-第三方代码没有被当作自有代码使用：所有第三方组件都在下文列明，且 `assets/vendor/jscpp.js` 文件头部带有署名 banner。
+第三方代码没有被当作自有代码使用：所有第三方组件都在下文列明，且随产物分发的 `assets/vendor/jscpp.js`、`assets/vendor/xterm.js`、`assets/vendor/xterm.css` 文件头部都带有署名 banner。
 
 ## 二、随仓库分发的第三方组件
 
-`assets/vendor/jscpp.js` 是浏览器端产物（由 `npm run build:engine` 生成），其中打包了下列第三方组件。清单由 `tools/build-jscpp.mjs` 在构建时自动打印，可随时重跑复现核对。
+随仓库分发的第三方产物有两个：
+
+- `assets/vendor/jscpp.js`（由 `npm run build:engine` 生成）：打包了下面表里的 JSCPP 及其依赖，并打了本项目的补丁（见本节末的修改说明）。
+- `assets/vendor/xterm.js` 与 `assets/vendor/xterm.css`（由 `npm run build:terminal` 生成）：内容是 xterm.js（未修改其源码，只做打包压缩），页面在进入「放大到全屏」的工作台时按需加载，用作终端。
+
+下面表里的组件均由 `tools/` 下的构建脚本在构建时自动列出，可随时重跑复现核对。
 
 | 组件 | 版本 | 许可 | 版权归属 | 作用 |
 | --- | --- | --- | --- | --- |
@@ -29,8 +34,9 @@
 | pegjs-util | 1.4.21 | MIT | Dr. Ralf S. Engelschall（该包未随附 LICENSE 文件，以其 package.json 声明的 MIT 为准） | JSCPP 解析 C 源码时的辅助库 |
 | printf | 0.6.1 | MIT | Copyright (c) 2008 Adaltas | JSCPP 的 printf 实现 |
 | PEG.js | 0.9.0（生成器版本） | MIT | Copyright (c) 2010-2016 David Majda | JSCPP 用它生成「C 语法 / 预处理」解析器，生成出来的代码随 JSCPP 一起打包进产物（`pegjs` 本体只在生成阶段用，**没有**打包进产物） |
+| @xterm/xterm | 6.0.0 | MIT | Copyright (c) 2017-2019 The xterm.js authors；Copyright (c) 2014-2016 SourceLair Private Company；Copyright (c) 2012-2013 Christopher Jeffrey | 「放大到全屏」工作台里的终端（真正的终端组件）。产物 `assets/vendor/xterm.js` **未修改** xterm.js 源码，只做打包压缩；样式文件原样复制 |
 
-上游地址：JSCPP <https://github.com/felixhao28/JSCPP>；lodash <https://github.com/lodash/lodash>；pegjs-util <https://github.com/rse/pegjs-util>；printf <https://github.com/adaltas/node-printf>；PEG.js <https://github.com/pegjs/pegjs>。
+上游地址：JSCPP <https://github.com/felixhao28/JSCPP>；lodash <https://github.com/lodash/lodash>；pegjs-util <https://github.com/rse/pegjs-util>；printf <https://github.com/adaltas/node-printf>；PEG.js <https://github.com/pegjs/pegjs>；xterm.js <https://github.com/xtermjs/xterm.js>。
 
 清单可用 `npm run build:engine` 重跑核对：构建结束会打印「打包进产物的第三方包」，当前结果为 `JSCPP, lodash, pegjs-util, printf`（PEG.js 属于生成阶段的工具，不在该列表里，但其生成代码在产物中，因此一并署名）。
 
@@ -208,6 +214,31 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
+### @xterm/xterm 6.0.0
+
+Copyright (c) 2017-2019, The xterm.js authors (https://github.com/xtermjs/xterm.js)
+Copyright (c) 2014-2016, SourceLair Private Company (https://www.sourcelair.com)
+Copyright (c) 2012-2013, Christopher Jeffrey (https://github.com/chjj/)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
 ## 五、自有代码的授权
 
 本仓库自有代码目前未声明开源许可，作者保留所有权利（All rights reserved）。若要以 MIT 等许可发布，由作者决定后再修改本节。
+

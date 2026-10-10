@@ -384,6 +384,7 @@ body.answer-full-open { overflow: hidden; }
 .panel.code-panel.fullscreen .editor { height: 46vh; min-height: 220px; }
 .panel.code-panel.fullscreen .dev { flex: 1 1 auto; min-height: 0; }
 .panel.code-panel.fullscreen .dev-out { height: auto; flex: 1 1 auto; min-height: 150px; max-height: none; }
+.panel.code-panel.fullscreen .dev-term { height: auto; flex: 1 1 auto; min-height: 170px; }
 body.code-full-open { overflow: hidden; }
 
 .dev { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
@@ -397,6 +398,11 @@ body.code-full-open { overflow: hidden; }
   white-space: pre-wrap; word-break: break-word;
 }
 .dev-out:empty::before { content: "终端还没运行过。点上面的「运行」试试。"; color: #c8a5b4; }
+.dev-term { display: none; height: 30vh; min-height: 170px; padding: 6px 4px 4px 8px; background: #3a2630; border: 1px solid #2e1d26; border-radius: 8px; }
+.dev.term-on .dev-term { display: block; }
+.dev.term-on .dev-out,
+.dev.term-on .dev-input-row { display: none; }
+.dev-term .xterm { height: 100%; }
 .dev-input-row { display: flex; align-items: center; gap: 8px; }
 .dev-prompt { flex: none; font: 400 13px/1 var(--mono); color: #6b5860; }
 .dev-input { flex: 1 1 auto; font-family: var(--mono); }
