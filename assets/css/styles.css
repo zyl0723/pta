@@ -529,6 +529,19 @@ body.code-full-open { overflow: hidden; }
 
 /* ---------- 「API」模块 ---------- */
 .api-panel .panel-head { margin-bottom: 2px; }
+
+/* ---------- 「提问」模块 ---------- */
+.ask-panel .field textarea { min-height: 96px; }
+.ask-out-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  flex-wrap: wrap; margin: 14px 0 0;
+}
+.ask-out-title { font-size: 13.5px; color: #5e2f47; }
+.ask-out-head .panel-actions { margin-left: auto; }
+.ask-panel #ask-answer { min-height: 180px; }
+
+/* 顶栏上的「留言板」入口：是链接，但看起来跟旁边的按钮一致 */
+.board-link { text-decoration: none; display: inline-flex; align-items: center; }
 /* 挪到左栏后这一列变窄，输入框跟着宽度自适应，避免频繁换行 */
 .api-panel .url-input { flex: 1 1 200px; width: auto; max-width: 100%; }
 .api-panel .key-input { flex: 1 1 170px; width: auto; max-width: 100%; }

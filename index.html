@@ -21,6 +21,7 @@
     </div>
   </div>
   <div class="topbar-actions">
+    <a id="link-board" class="btn ghost board-link" href="board.html">留言板 ↗</a>
     <button id="btn-toggle-cheatsheet" class="btn ghost">常见错误速查 ▾</button>
   </div>
 </header>
@@ -145,6 +146,36 @@
         </div>
       </div>
       <textarea id="practice-body" class="result-out" spellcheck="false" placeholder="点上面的「生成相似练习题」，配好 API 后点「在本站生成」，题目就显示在这里。点「复制全部」可以整段复制，拿去别的 AI 网站找答案。"></textarea>
+    </div>
+
+    <div id="panel-ask" class="panel ask-panel">
+      <div class="panel-head">
+        <h2>提问</h2>
+        <div class="panel-actions"><span class="dim">看不懂哪一行就问哪一行</span></div>
+      </div>
+
+      <div class="field-note">
+        <b>怎么用：</b>在下面写清你哪里不懂，<b>一定要写是第几行</b>，例如「<b>第 6 行的 printf 为什么用 %d 会出错？</b>」「<b>第 4 行的 for 循环为什么从 0 开始？</b>」。点「生成提问」以后，页面会把<b>你的问题 + 题目 + 你的代码（带行号）+ 语言 + 难度</b>一起交给 AI：回答会按你选的难度来讲——选<b>简单</b>就尽量不用术语，选<b>困难</b>可以用术语但要说人话；能打比方就举个生活里的例子，不确定的地方 AI 必须明说「我不确定」，不许含糊或者编。用的还是<b>你自己的 AI</b>（填好上面的 API 点「在本站生成」，或者复制提示词去你自己的 AI 网站问）。
+      </div>
+
+      <label class="field">
+        <span>你的问题（写清第几行，越具体越好）</span>
+        <textarea id="ask-question" spellcheck="false" placeholder="例如：&#10;第 6 行的 printf 为什么用 %d 打印 double 会出错？&#10;第 4 行的循环写成 i &lt;= 5 为什么就多输出一个数？"></textarea>
+      </label>
+
+      <div class="ai-row">
+        <button id="btn-ask" class="btn tiny primary">生成提问</button>
+        <button id="btn-ask-clear" class="btn tiny" type="button">清空问题</button>
+      </div>
+
+      <div class="ask-out-head">
+        <h3 class="ask-out-title">回答</h3>
+        <div class="panel-actions">
+          <span class="dim" id="ask-note">还没有回答。</span>
+          <button id="btn-copy-ask" class="btn tiny">复制回答</button>
+        </div>
+      </div>
+      <textarea id="ask-answer" class="result-out" spellcheck="false" placeholder="填好 API 后点「生成提问」，再到下面「发给 AI 的内容」里点「在本站生成」，回答会显示在这里；也可以点「复制提示词」拿去你自己的 AI 网站问。"></textarea>
     </div>
 
     <div id="panel-api" class="panel api-panel">

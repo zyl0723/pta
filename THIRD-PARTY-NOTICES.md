@@ -57,6 +57,18 @@
 
 按 MIT 许可的要求，上述修改在此明确声明。
 
+### 运行时加载、不随仓库分发的第三方组件
+
+`board.html`（留言板页面）通过官方脚本嵌入开源评论组件 **giscus**：
+
+| 组件 | 版本 | 许可 | 版权归属 | 作用 |
+| --- | --- | --- | --- | --- |
+| giscus | 运行时从 `https://giscus.app` 加载最新版 | MIT | Copyright (c) 2021 Sage M. Abdullah；Copyright (c) 2018 Jeremy Danyow；Copyright (c) 2018 Chris Veness | 留言板（把留言存进本仓库的 GitHub Discussions） |
+
+上游地址：giscus <https://github.com/giscus/giscus>。
+
+说明：giscus **没有**打包进本仓库，也没有被修改——`assets/js/board.js` 只是在页面打开时插入它官方的 `https://giscus.app/client.js`，留言数据保存在本仓库的 GitHub Discussions 里，本仓库不保存任何留言数据。该页面的 CSP（`board.html` 里的 meta 标签）只额外放行了 `https://giscus.app`（以及显示头像用的 `avatars.githubusercontent.com`），主页面 `index.html` 的 CSP 保持原样、不加载任何第三方脚本。
+
 ## 三、署名与原创性说明（为什么不会构成抄袭）
 
 1. **按文件划分归属**：第三方代码只出现在 `assets/vendor/`（构建产物）中，且产物文件头部带署名 banner；自有代码见第一节。
@@ -261,8 +273,35 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
+### giscus（留言板，运行时加载）
+
+MIT License
+
+Copyright (c) 2021 Sage M. Abdullah
+Copyright (c) 2018 Jeremy Danyow
+Copyright (c) 2018 Chris Veness
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
 ## 五、自有代码的授权
 
 本仓库自有代码目前未声明开源许可，作者保留所有权利（All rights reserved）。若要以 MIT 等许可发布，由作者决定后再修改本节。
+
 
 

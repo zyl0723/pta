@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>留言板 · C 语言习题检查器</title>
+<meta name="description" content="公开留言板：可以在这里提问，也可以回答别人的问题。留言公开可见、永久保存、显示日期，不支持私聊。">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://giscus.app; style-src 'self' 'unsafe-inline' https://giscus.app; img-src 'self' data: https://giscus.app https://avatars.githubusercontent.com https://*.githubusercontent.com; font-src 'self' https://giscus.app; connect-src https://giscus.app https://api.github.com; frame-src https://giscus.app; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<link rel="icon" type="image/svg+xml" href="assets/img/logo-cat.svg">
+<link rel="stylesheet" href="assets/css/styles.css">
+<link rel="stylesheet" href="assets/css/board.css">
+</head>
+<body class="board-page">
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo"><img src="assets/img/logo-cat.svg" alt="" width="30" height="30"></span>
+    <div>
+      <h1>留言板</h1>
+      <p>公开可见 · 永久保存 · 不接受私聊</p>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <a class="btn ghost board-link" href="index.html">← 回到 C 语言习题检查器</a>
+  </div>
+</header>
+
+<main class="board-wrap">
+  <section class="panel">
+    <h2 class="board-title">规则（先看这里）</h2>
+    <ul class="board-rules">
+      <li><b>完全公开</b>：你发的每一条留言、每一条回复，任何人打开这个页面都能看到。</li>
+      <li><b>不支持私聊</b>：这里没有私信功能，所有交流都在这张页面上公开进行。</li>
+      <li><b>永久保存、显示日期</b>：留言保存在本仓库的 GitHub Discussions 里，会一直保留，并显示发布时间。</li>
+      <li><b>谁能删</b>：留言的<b>本人</b>可以删自己的留言；<b>站长</b>（仓库管理员）可以删任何一条。其他人删不了。</li>
+      <li><b>需要 GitHub 账号</b>：发留言要用 GitHub 账号登录（防机器人刷屏，也能确认「谁发的」）；不登录也能看全部留言。</li>
+      <li>提问建议写清楚：<b>题号 / 第几行 / 你想问什么</b>；贴代码时最好把题目要求也贴上。</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <div class="board-head">
+      <h2 class="board-title">大家的留言</h2>
+      <span class="dim" id="board-state">正在加载…</span>
+    </div>
+    <div id="board" class="board-host"></div>
+    <p class="board-credit">
+      留言板用的是开源项目 <a href="https://github.com/giscus/giscus" target="_blank" rel="noopener noreferrer">giscus</a>（MIT 许可，版权归 giscus 作者所有）：它把留言存进本仓库的 GitHub Discussions，本页面自己不保存任何数据。署名与许可全文见仓库的 <code>THIRD-PARTY-NOTICES.md</code>。
+    </p>
+  </section>
+</main>
+
+<footer class="footer">
+  <span>留言公开可见 · 不支持私聊 · 结果仅供参考，最终以 PTA 判题为准</span>
+</footer>
+
+<script src="assets/js/board.js"></script>
+</body>
+</html>

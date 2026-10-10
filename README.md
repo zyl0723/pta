@@ -33,6 +33,8 @@
 
   终端用的是开源库 [xterm.js](https://github.com/xtermjs/xterm.js) 6.0.0 加官方 [addon-fit](https://github.com/xtermjs/xterm.js/tree/master/addons/addon-fit) 0.11.0（均 MIT，已在 THIRD-PARTY-NOTICES.md 与 README 署名）。xterm.js 按需加载，首屏不会因此变大；没加载出来会自动退回页面自带的简易终端。
 15. **顺手的小工具**：① 题目旁边的**「清空题目」**一键清掉题目框，接着粘下一题就行（只清题目，不动「应用修改」）；② 代码工具栏上的**「↶ 上一步 / 下一步 ↷」**是编辑器自己的撤销/重做（键盘 `Ctrl+Z` / `Ctrl+Y`、`Ctrl+Shift+Z` 同样可用），最多记 60 步，手滑删错、误点「清空」也能退回来。
+16. **提问**（在「练习」和「API」之间）：看不懂哪一行就问哪一行。写清「第几行 + 你想问什么」→ 点「生成提问」，页面把**你的问题 + 题目 + 你的代码（带行号） + 语言 + 难度**拼成一段提问交给你自己的 AI。回答框里给出解释，规则是：**先给结论、再讲为什么、最后用一句大白话复述**；按难度选说话方式（简单＝尽量不用术语，困难＝可以用术语但要说人话）；能打比方就举一个生活里的例子；**不确定的地方必须明说「我不确定」，不许含糊、不许编**。和别的 AI 功能一样，需要你自己的 API（或复制提示词去你自己的 AI 网站）。
+17. **留言板**（单独一个网址：`board.html`）：公开留言、互相答疑的地方。公开可见、永久保存、显示日期、**不支持私聊**；留言**本人**和**站长**可以删除，别人删不了。它用的是开源评论组件 [giscus](https://github.com/giscus/giscus)（MIT，已署名），留言存在本仓库的 GitHub Discussions 里，所以发留言需要 GitHub 账号登录（只看不用登录）。放在单独页面是为了**不影响主页面**：主页面不加载任何第三方脚本，CSP 保持严格；`board.html` 只额外放行 `giscus.app`。站长首次使用需要按页面上的 4 步说明配置一次（开启 Discussions、建分类、在 giscus.app 取两串 ID 填进 `assets/js/board.js`）。
 14. **语言 + 难度（最高优先级）**：「你的代码」右上角有两个下拉框——**语言**（C 语言 / Python / C++ / Java）和**答案难度**（简单 / 中等 / 困难）。选完以后，页面里的答案与解析、练习、翻译、二次检查全都按这两个选择来：拼好的提示词里会写明「用哪种语言、给谁看的什么难度」。
 
 - **难度**：`简单`＝只给新手能一眼看懂的写法（不用任何技巧）；`中等`＝简洁一些，允许用一点基础技巧（拆函数、常用库函数）；`困难`＝直接给最快最好用的写法（算法、标准库工具都用上，不照顾可读性、不绕弯子）。
@@ -208,14 +210,18 @@ npm test
 
 ```
 index.html              页面结构
+board.html              留言板页面（单独一个网址，通过 giscus 挂在 GitHub Discussions 上）
 assets/css/styles.css   样式
+assets/css/board.css    留言板页面的补充样式
 assets/js/analyzer.js   静态检查引擎（规则）
 assets/js/runner.js     运行 + 输出对比 + 报错翻译
 assets/js/problems.js   基础题型样例与参考实现
-assets/js/prompt.js     提示词拼装（答案与解析 / 练习）
+assets/js/prompt.js     提示词拼装（答案与解析 / 提问 / 练习 / 翻译 / 二次检查）
 assets/js/aiclient.js   自带 API Key 的对话客户端（OpenAI 兼容，流式）
 assets/js/app.js        页面交互
+assets/js/board.js      留言板：插入 giscus 官方脚本（未配置时显示配置说明）
 assets/vendor/jscpp.js  打包后的 C 解释器（含补丁）
+assets/vendor/xterm.js  打包后的终端（xterm.js + 官方 fit 插件）
 tools/                  构建脚本、补丁、测试
 ```
 
@@ -234,7 +240,7 @@ tools/                  构建脚本、补丁、测试
 ## 作者与许可
 
 - 作者：**zyl0723**（<https://github.com/zyl0723>）。
-- 自有代码：页面（`index.html`、`assets/css/`、`assets/js/app.js`）、静态检查规则引擎（`assets/js/analyzer.js`）、运行与输出对比（`assets/js/runner.js`）、题库（`assets/js/problems.js`）、提示词拼装（`assets/js/prompt.js`）、自带 API Key 的对话客户端（`assets/js/aiclient.js`）、猫咪图标（`assets/img/logo-cat.svg`，作者手绘的 SVG）、构建脚本与解释器补丁（`tools/`）、测试与文档，均由作者编写。
+- 自有代码：页面（`index.html`、`board.html`、`assets/css/`、`assets/js/app.js`、`assets/js/board.js`）、静态检查规则引擎（`assets/js/analyzer.js`）、运行与输出对比（`assets/js/runner.js`）、题库（`assets/js/problems.js`）、提示词拼装（`assets/js/prompt.js`）、自带 API Key 的对话客户端（`assets/js/aiclient.js`）、猫咪图标（`assets/img/logo-cat.svg`，作者手绘的 SVG）、构建脚本与解释器补丁（`tools/`）、测试与文档，均由作者编写。
 - 第三方只有一类：**随产物分发**的（JSCPP 与 xterm.js，见 THIRD-PARTY-NOTICES.md 第二节，已附许可全文与修改声明）。进站提示弹窗、页面样式、API 客户端都是作者手写的原生 HTML/CSS/JS；第三方库里只有 xterm.js 用在了界面上（全屏工作台的终端），而且只有进全屏时才按需加载。
 - 自有代码目前未声明开源许可，保留所有权利。
 
@@ -253,6 +259,7 @@ tools/                  构建脚本、补丁、测试
 | @xterm/addon-fit | 0.11.0 | Copyright (c) 2019 The xterm.js authors | xterm.js 官方的尺寸自适应插件：终端行列跟着盒子大小走，中文长行不被裁 |
 
 - 每个组件的**完整许可全文与版权行**见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) 第四节。
+- 另有一个**运行时加载、不随仓库分发**的组件：留言板页 `board.html` 用官方脚本嵌入 [giscus](https://github.com/giscus/giscus)（MIT，Copyright (c) 2021 Sage M. Abdullah；Copyright (c) 2018 Jeremy Danyow；Copyright (c) 2018 Chris Veness）。它没有打包进仓库、也没有被修改，主页面 `index.html` 不加载它。
 - 对 JSCPP 的修改（scanf 读取修复、`EOF` 取值、printf 类型映射等）已按 MIT 要求在 THIRD-PARTY-NOTICES.md 第二节明确声明。
 - 只在构建阶段使用、**不随产物分发**的依赖：esbuild 0.28.2（MIT, Copyright (c) 2020 Evan Wallace）。
 - 清单可自行复现核对：跑 `npm run build:engine`，会打印「打包进产物的第三方包」。

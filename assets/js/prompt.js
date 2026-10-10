@@ -49,6 +49,7 @@
       key: "easy", name: "简单",
       who: "刚学编程的新手",
       goal: "最好懂：一眼能看懂、照着写就能过",
+      explain: "学生是新手：尽量不用专业术语；实在躲不开的词，第一次出现时就用一句话解释清楚；句子短一点、一步一步来。",
       style: [
         "只用最基础的语法：变量、if / else、for / while、数组、基本的输入输出。",
         "不要用任何技巧和「高级写法」。例如：指针 / 位运算 / 宏 / 递归 / 自增自减混在一行（C）；列表推导式 / lambda / 生成器 / 递归（Python）；模板 / STL 容器与算法 / auto / 引用（C++）；流式写法 / 复杂集合操作（Java）。",
@@ -60,6 +61,7 @@
       key: "normal", name: "中等",
       who: "学过基础语法的人",
       goal: "简洁一些，但学过基础的人能看懂",
+      explain: "学生学过基础语法：可以用常用的词（变量、循环、数组、下标、编译错误这一类），但每个词后面都要跟一句大白话解释。",
       style: [
         "在简单写法的基础上，可以用一点常见技巧：把重复逻辑拆成小函数；用常用的库函数（C 的 string.h / math.h / qsort，Python 的 sorted / enumerate / 字典，C++ 的 sort / vector / string，Java 的 ArrayList / Arrays.sort / String 方法）。",
         "要简洁，但不要把好几件事硬挤在一行。",
@@ -70,6 +72,7 @@
       key: "hard", name: "困难",
       who: "只看结果、不在意代码能不能看懂的人",
       goal: "最好用：最短、最省事、能最快跑过所有测试点",
+      explain: "学生想往深处学：可以适当使用专业术语（内存、地址、求值顺序、时间复杂度、未定义行为等），但每个术语都要立刻用大白话再解释一遍，不让人只看到名词。",
       style: [
         "用最直接、最高效的写法：合适的算法与数据结构，以及标准库里现成的工具（C 的 qsort / memcpy，Python 的 collections / itertools / bisect / heapq，C++ 的 STL 算法与容器，Java 的集合框架和数组工具类）。",
         "代码要短、要直接：不绕弯子、不写没用的中间步骤、不要多余的注释。",
@@ -96,6 +99,43 @@
   function block(title, body) {
     var t = (body == null ? "" : String(body)).trim();
     return "【" + title + "】\n" + (t ? t : "（无）");
+  }
+
+  /* 带行号的代码：提问模块里 AI 要按「第几行」回答，标上行号最不容易答偏 */
+  function numbered(code) {
+    var lines = String(code == null ? "" : code).replace(/\r\n/g, "\n").split("\n");
+    return lines.map(function (s, i) { return (i + 1) + " | " + s; }).join("\n");
+  }
+
+  /* 提问：用户看不懂哪一行就问哪一行，按语言与难度讲清楚 */
+  function buildAsk(ctx) {
+    var c = ctx || {};
+    var lang = pick(LANGS, c.lang, "c");
+    var level = pick(LEVELS, c.level, "easy");
+    var q = (c.question == null ? "" : String(c.question)).trim();
+    return [
+      "你是一位 " + lang.name + " 老师，正在回答一个学生关于代码的提问。",
+      "",
+      headBlock(lang, level),
+      "",
+      "【学生的问题】",
+      q ? q : "（这次没写清楚问题，请先让学生补充：是第几行、哪里看不懂。）",
+      "",
+      block("题目", c.problem),
+      "",
+      block("学生写的代码（" + lang.name + "，每行前面是行号）", numbered(c.code)),
+      "",
+      mistakeBlocks(c.feedback, c.findings),
+      "",
+      "【回答要求，请严格遵守】",
+      "1. 先回答学生问的那个问题：第一句就给结论，然后说清「为什么会这样」。学生写了第几行，就针对那一行（最多连带紧邻的几行）来讲，不要跑题。",
+      "2. 讲解方式按上面的难度来：" + level.explain,
+      "3. 解释完以后，再用一句最通俗的大白话把那句结论复述一遍（像给同学讲题那样，不用任何术语）。",
+      "4. 如果能用一个日常生活里人人都懂的例子打比方（排队、洗牌、快递分拣、找座位这类），就举一个；这道题确实不好类比时，直接不举，不要硬编一个不相干的比喻。",
+      "5. 正确性最重要：凡是你不确定的（编译器/语言版本的差异、没见过的写法、边界情况、题库没说的隐含条件），必须明确写「我不确定」，并说明可能的情况；绝对不要为了显得流畅而编造结论，也不要含糊其辞或模棱两可。宁可说「这我不确定」，也不要给错话。",
+      "6. 如果学生这一行确实写错了，指出错在哪并给出改法（用 " + lang.code + " 写，写法风格跟着上面的难度走）；如果没错，就直接说「这行没问题」，并说明它为什么是对的。",
+      "7. 全文用中文，条理清楚、别绕弯子；不要再把整份代码重复一遍。"
+    ].join("\n");
   }
 
   function findingsToText(findings) {
@@ -248,6 +288,7 @@
 
   window.PTAPrompt = {
     buildAnswer: buildAnswer,
+    buildAsk: buildAsk,
     buildPractice: buildPractice,
     buildTranslate: buildTranslate,
     buildRecheck: buildRecheck,

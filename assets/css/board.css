@@ -1,0 +1,32 @@
+/*!
+ * 留言板页面（board.html）的补充样式。
+ * 配色、字体、按钮等主体样式沿用 assets/css/styles.css，这里只加这个页面特有的部分。
+ */
+.board-wrap {
+  max-width: 900px; margin: 0 auto; padding: 18px 24px 8px;
+  display: flex; flex-direction: column; gap: 18px;
+}
+.board-title { font-size: 15px; color: #5e2f47; margin-bottom: 10px; }
+.board-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.board-head .board-title { margin-bottom: 10px; }
+
+.board-rules { margin: 0; padding-left: 20px; }
+.board-rules li { font-size: 13px; line-height: 1.85; color: #4a3a43; margin-bottom: 4px; }
+.board-rules b { color: #8a2f53; }
+
+.board-host { min-height: 160px; }
+.board-setup {
+  background: var(--warn-soft); border: 1px solid #edd9b4; border-left: 3px solid var(--warn);
+  border-radius: 8px; padding: 12px 14px;
+}
+.board-setup h3 { font-size: 13.5px; margin-bottom: 8px; color: #5b4850; }
+.board-setup ol { margin: 0; padding-left: 20px; }
+.board-setup li { font-size: 13px; line-height: 1.9; color: #5b4850; }
+.board-setup code { background: #f4e4ea; }
+
+.board-credit { margin: 14px 0 0; font-size: 12px; line-height: 1.8; color: #6b5860; }
+.board-credit a { color: #2563eb; }
+
+@media (max-width: 560px) {
+  .board-wrap { padding: 12px; }
+}

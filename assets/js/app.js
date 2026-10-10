@@ -152,6 +152,14 @@
     });
 
     $("btn-answer").addEventListener("click", function () { showPrompt("answer"); });
+    $("btn-ask").addEventListener("click", function () { showPrompt("ask"); });
+    $("btn-ask-clear").addEventListener("click", function () {
+      var box = $("ask-question");
+      if (!box) return;
+      box.value = "";
+      if (typeof box.focus === "function") box.focus();
+    });
+    $("btn-copy-ask").addEventListener("click", function () { copyResult($("ask-answer"), "回答"); });
     $("btn-translate").addEventListener("click", function () { showPrompt("translate"); });
     $("btn-practice").addEventListener("click", function () { showPrompt("practice"); });
     $("btn-recheck").addEventListener("click", runRecheck);
@@ -413,6 +421,14 @@
     return true;
   }
 
+  function needQuestion() {
+    var box = $("ask-question");
+    if (box.value.trim()) return true;
+    alert("先在「提问」框里写清你哪里不懂——最好写上第几行，例如：第 6 行的 printf 为什么用 %d 会出错？");
+    box.focus();
+    return false;
+  }
+
   function setAiStatus(text) {
     $("ai-status").textContent = text;
   }
@@ -421,6 +437,9 @@
     if (!window.PTAPrompt) return;
     if (kind === "translate") {
       if (!needFeedback()) return;
+    } else if (kind === "ask") {
+      if (!needProblem()) return;
+      if (!needQuestion()) return;
     } else if (!needProblem()) {
       return;
     }
@@ -435,6 +454,9 @@
     var text;
     if (kind === "answer") {
       text = window.PTAPrompt.buildAnswer(ctx);
+    } else if (kind === "ask") {
+      ctx.question = $("ask-question").value;
+      text = window.PTAPrompt.buildAsk(ctx);
     } else if (kind === "translate") {
       text = window.PTAPrompt.buildTranslate(ctx);
     } else {
@@ -448,6 +470,8 @@
     if (kind === "practice") {
       setOutNote("practice-note", "还没有生成。");
       $("panel-practice-out").classList.remove("hidden");
+    } else if (kind === "ask") {
+      setOutNote("ask-note", "还没有生成。");
     } else {
       $("answer-title").textContent = kind === "translate"
         ? "报错翻译（" + LANG_LABEL[curLang()] + "）"
@@ -483,6 +507,7 @@
 
   function outputFor(kind) {
     if (kind === "practice") return { panel: $("panel-practice-out"), body: $("practice-body"), note: "practice-note", parts: false };
+    if (kind === "ask") return { panel: $("panel-ask"), body: $("ask-answer"), note: "ask-note", parts: false };
     return { panel: $("panel-answer"), body: $("answer-body"), note: "answer-note", parts: kind !== "translate" };
   }
 
@@ -883,6 +908,7 @@
 
   function aiKindLabel(kind) {
     if (kind === "practice") return "练习题";
+    if (kind === "ask") return "提问回答";
     if (kind === "translate") return "翻译";
     if (kind === "recheck") return "二次检查";
     return "答案";

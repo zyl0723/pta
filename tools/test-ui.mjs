@@ -799,6 +799,77 @@ store["code"].dispatch("keydown", { key: "y", ctrlKey: true, preventDefault() {}
 check("Ctrl+Y 也能前进", store["code"].value === "int main(){ return 0; }", store["code"].value.slice(0, 40));
 store["btn-undo"].dispatch("click");
 
+console.log("=== 提问模块（在练习和 API 之间） ===");
+check("「练习」和「API」之间多了一个「提问」模块", /id="panel-ask"/.test(html) && html.indexOf('id="panel-practice-out"') < html.indexOf('id="panel-ask"') && html.indexOf('id="panel-ask"') < html.indexOf('id="panel-api"'));
+check("模块里有提问框、回答框和三个按钮", /id="ask-question"/.test(html) && /id="ask-answer"/.test(html) && /id="btn-ask"/.test(html) && /id="btn-ask-clear"/.test(html) && /id="btn-copy-ask"/.test(html));
+check("说明里要求写清第几行，并给了例子", /一定要写是第几行/.test(html) && /第 6 行的 printf/.test(html) && /第 4 行的 for 循环/.test(html));
+check("说明里写明按难度决定怎么讲、不确定必须明说", /简单<\/b>就尽量不用术语/.test(html) && /不确定的地方 AI 必须明说/.test(html));
+check("说明里写明用你自己的 AI", /你自己的 AI/.test(html));
+
+store["problem-text"].value = "7-1 两数求和\n输入 a 和 b，输出 a + b。";
+alerts.length = 0;
+store["ask-question"].value = "";
+store["btn-ask"].dispatch("click");
+check("没写问题就先提醒（并要求写第几行）", alerts.length > 0 && /第几行/.test(alerts[0]), "alerts=" + alerts.length);
+
+store["code"].value = '#include <stdio.h>\n\nint main() {\n    int a, b;\n    scanf("%d %d", &a, &b);\n    printf("%d\\n", a + b);\n    return 0;\n}';
+store["code"].dispatch("input");
+flush();
+store["ask-question"].value = "第 6 行的 printf 为什么要写 \\n？";
+store["btn-ask"].dispatch("click");
+const askPrompt = store["prompt-out"].value;
+check("提示词里带上学生的问题", askPrompt.indexOf("第 6 行的 printf 为什么要写") >= 0);
+check("提示词把语言与难度标成最高优先级", /语言：C 语言/.test(askPrompt) && /答案难度：简单/.test(askPrompt) && /最高优先级/.test(askPrompt));
+check("提示词里的代码带行号，方便按行回答", /1 \| #include <stdio\.h>/.test(askPrompt) && /6 \|/.test(askPrompt));
+check("要求先给结论、再用大白话复述", /第一句就给结论/.test(askPrompt) && /大白话把那句结论复述一遍/.test(askPrompt));
+check("简单难度＝尽量不用术语", /尽量不用专业术语/.test(askPrompt));
+check("允许举生活例子，不好举例就不举", /日常生活里人人都懂的例子/.test(askPrompt) && /不要硬编/.test(askPrompt));
+check("不确定必须明说、不许编造", /必须明确写「我不确定」/.test(askPrompt) && /绝对不要为了显得流畅而编造结论/.test(askPrompt));
+
+store["answer-level"].value = "hard";
+store["answer-level"].dispatch("change");
+store["btn-ask"].dispatch("click");
+check("换成「困难」后允许用术语但要说人话", /适当使用专业术语/.test(store["prompt-out"].value) && /用大白话再解释一遍/.test(store["prompt-out"].value));
+store["answer-level"].value = "easy";
+store["answer-level"].dispatch("change");
+
+store["ai-preset"].value = "deepseek";
+store["ai-preset"].dispatch("change");
+store["ai-key"].value = "sk-test-1234567890";
+store["chk-ai-remember"].checked = true;
+store["btn-ai-save"].dispatch("click");
+const keepChat = sandbox.PTAAI.chat;
+sandbox.PTAAI.chat = function (opts) { opts.onDelta("d", "AI 对提问的回答正文"); opts.onDone(); return { cancel: function () {} }; };
+store["ask-question"].value = "第 6 行的 printf 为什么要写 \\n？";
+store["btn-ask"].dispatch("click");
+store["ask-answer"].value = "";
+store["btn-ai-run"].dispatch("click");
+check("AI 的回答写进提问模块的「回答」框", store["ask-answer"].value.indexOf("AI 对提问的回答正文") >= 0, store["ask-answer"].value.slice(0, 40));
+check("回答框的说明变成「已生成」", /已生成/.test(store["ask-note"].textContent), store["ask-note"].textContent);
+sandbox.PTAAI.chat = keepChat;
+
+store["ask-question"].value = "随便写点";
+store["btn-ask-clear"].dispatch("click");
+check("「清空问题」清掉提问框", store["ask-question"].value === "");
+
+console.log("=== 留言板页面（单独网址） ===");
+const boardPage = readFileSync(path.join(root, "board.html"), "utf8");
+const boardJs = readFileSync(path.join(root, "assets/js/board.js"), "utf8");
+readFileSync(path.join(root, "assets/css/board.css"), "utf8");
+check("主页面顶栏有「留言板」入口，指向 board.html", /href="board\.html"/.test(html) && /留言板/.test(html));
+check("留言板是单独一个页面", /<!DOCTYPE html>/.test(boardPage) && /id="board"/.test(boardPage));
+check("规则写清了：公开可见、永久保存、显示日期、不支持私聊", /完全公开/.test(boardPage) && /永久保存/.test(boardPage) && /显示发布时间/.test(boardPage) && /不支持私聊/.test(boardPage));
+check("规则写清了谁可以删", /本人<\/b>可以删/.test(boardPage) && /站长/.test(boardPage) && /其他人删不了/.test(boardPage));
+check("规则写清了要 GitHub 账号登录", /需要 GitHub 账号/.test(boardPage));
+check("用 giscus 的官方脚本，并从仓库里带上出处链接", /giscus\.app\/client\.js/.test(boardJs) && /https:\/\/github\.com\/giscus\/giscus/.test(boardPage));
+check("署名写明了 giscus 与 MIT", /MIT/.test(boardPage) && /THIRD-PARTY-NOTICES\.md/.test(boardPage));
+check("没配置时会显示 4 步配置说明，不会白屏", /renderSetup/.test(boardJs) && /还没开通/.test(boardJs) && /data-repo-id/.test(boardJs) && /data-category-id/.test(boardJs));
+check("留言板页只放行 giscus，主页面完全不加载 giscus", /frame-src https:\/\/giscus\.app/.test(boardPage) && /script-src 'self' https:\/\/giscus\.app/.test(boardPage) && !/giscus/.test(html));
+check("留言板页不加载别的第三方脚本", /assets\/js\/board\.js/.test(boardPage) && !/https:\/\/[^"']*\.js/.test(boardPage));
+check("留言板有回主页面的链接", /href="index\.html"/.test(boardPage));
+check("署名文件与 README 里都写了 giscus", /giscus/.test(notices) && /giscus/.test(readme));
+check("主页面 CSP 依然严格（没有放行任何外部脚本）", /script-src 'self';/.test(html) && !/giscus\.app/.test(html));
+
 console.log("\n集成测试：" + ok + " 通过 / " + (ok + bad) + " 项");
 if (bad) process.exitCode = 1;
 
