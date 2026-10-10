@@ -34,6 +34,7 @@
     fillProblemSelect();
     bindEvents();
     initWelcome();
+    initHints();
     dropLegacyAccountData();
     loadAiConfig();
     refreshGutter();
@@ -78,6 +79,7 @@
       refreshGutter();
       analyzeNow();
     });
+    $("btn-hints").addEventListener("click", toggleHints);
     $("problem-select").addEventListener("change", onProblemChange);
     $("btn-fill-reference").addEventListener("click", fillReference);
     $("btn-toggle-cheatsheet").addEventListener("click", function () {
@@ -164,6 +166,34 @@
 
     if (welcomeMuted()) { box.classList.add("hidden"); return; }
     box.classList.remove("hidden");
+  }
+
+  /* ---------- 网站使用提示：一键把各模块的说明文字收起来，界面更清爽 ---------- */
+  var HINTS_KEY = "pta-hints-off";
+
+  function hintsOff() {
+    return !!(document.body && document.body.classList && document.body.classList.contains("hints-off"));
+  }
+
+  function setHints(off) {
+    var body = document.body;
+    if (body && body.classList) body.classList[off ? "add" : "remove"]("hints-off");
+    var btn = $("btn-hints");
+    if (!btn) return;
+    btn.textContent = off ? "网站使用提示（已收起）" : "网站使用提示";
+    if (btn.classList) btn.classList[off ? "add" : "remove"]("on");
+    if (typeof btn.setAttribute === "function") btn.setAttribute("aria-pressed", off ? "true" : "false");
+  }
+
+  function toggleHints() {
+    var off = !hintsOff();
+    setHints(off);
+    if (off) lsSet(HINTS_KEY, "1"); else lsDel(HINTS_KEY);
+  }
+
+  /* 上次收起过就接着收起，不用每次重新点 */
+  function initHints() {
+    setHints(lsGet(HINTS_KEY) === "1");
   }
 
   /* ---------- 提示词：本页面不联网，只把文本拼好交给使用者自己的 AI ---------- */

@@ -38,6 +38,9 @@ function El(id) {
 const store = {};
 ids.forEach(id => { store[id] = El(id); });
 
+/* body 的 class 也记下来，用来检查「网站使用提示」的收起状态 */
+const bodyClass = new Set();
+
 const document = {
   readyState: "complete",
   getElementById: (id) => store[id] || (store[id] = El(id)),
@@ -45,7 +48,15 @@ const document = {
   querySelectorAll() { return []; },
   createElement: () => El("tmp"),
   execCommand: () => true,
-  body: { appendChild() {}, removeChild() {} }
+  body: {
+    appendChild() {}, removeChild() {},
+    classList: {
+      add(c) { bodyClass.add(c); },
+      remove(c) { bodyClass.delete(c); },
+      contains(c) { return bodyClass.has(c); },
+      toggle(c) { if (bodyClass.has(c)) { bodyClass.delete(c); return false; } bodyClass.add(c); return true; }
+    }
+  }
 };
 
 const alerts = [];
@@ -186,6 +197,9 @@ check("提示词含题目原文", store["prompt-out"].value.indexOf("两数求�
 check("提示词要求注释单独占一行写在代码下一行", /下一行/.test(store["prompt-out"].value) && /不要把 \/\/ 注释跟在代码同一行末尾/.test(store["prompt-out"].value));
 check("提示词要求列出易错点", /容易出错的地方/.test(store["prompt-out"].value));
 check("提示词要求严格按三段标题输出", /第 1 部分/.test(store["prompt-out"].value) && /第 2 部分/.test(store["prompt-out"].value) && /第 3 部分/.test(store["prompt-out"].value));
+check("提示词要求答案尽量简单、照顾零基础", /新手/.test(store["prompt-out"].value) && /最简单/.test(store["prompt-out"].value));
+check("提示词明确不要花哨写法", /不要用宏/.test(store["prompt-out"].value) && /不要用指针技巧/.test(store["prompt-out"].value) && /不要用递归/.test(store["prompt-out"].value));
+check("提示词要求变量名一看就懂", /变量名用 a、b、n、i、sum/.test(store["prompt-out"].value));
 check("提示词带上自动检查出的错误点", /scanf/.test(store["prompt-out"].value), store["prompt-out"].value.slice(0, 120));
 check("提示词带上 PTA 批改提示", store["prompt-out"].value.indexOf("答案错误") >= 0);
 
@@ -354,6 +368,45 @@ for (const el of Object.values(store)) { el.classList._s.clear(); el._handlers =
 vm.runInContext(readFileSync(path.join(root, "assets/js/app.js"), "utf8"), sandbox, { filename: "app.js" });
 flush();
 check("勾过之后再次进站不再弹出", store["welcome"].classList.contains("hidden"));
+
+console.log("=== 网站使用提示：一键收起各模块的说明 ===");
+check("「你的代码」右上角多了「网站使用提示」按钮", /id="btn-hints"/.test(html) && /网站使用提示/.test(html));
+check("按钮排在「载入示例」左边", html.indexOf("btn-hints") < html.indexOf("btn-sample"));
+check("样式里定义了收起说明的规则", /body\.hints-off \.panel \.field-note/.test(css) && /body\.hints-off \.panel \.ai-hint/.test(css) && /body\.hints-off \.panel \.toolbar-tip/.test(css) && /body\.hints-off \.panel \.ans-tip/.test(css) && /body\.hints-off \.panel \.ans-sub/.test(css));
+check("功能提醒「没按三段输出」不跟着一起收", /body\.hints-off #answer-parse-hint\s*\{[^}]*display:\s*block/.test(css));
+
+check("默认是显示说明的", !bodyClass.has("hints-off") && store["btn-hints"].textContent === "网站使用提示", store["btn-hints"].textContent);
+store["btn-hints"].dispatch("click");
+check("点一下说明收起来", bodyClass.has("hints-off"));
+check("按钮写明已经收起", /已收起/.test(store["btn-hints"].textContent), store["btn-hints"].textContent);
+check("按下的状态会高亮", store["btn-hints"].classList.contains("on"));
+check("这个选择记在本机", lsData.get("pta-hints-off") === "1");
+store["btn-hints"].dispatch("click");
+check("再点一下说明回来", !bodyClass.has("hints-off") && store["btn-hints"].textContent === "网站使用提示", store["btn-hints"].textContent);
+check("取消后不再记在本机", lsData.get("pta-hints-off") === undefined);
+
+store["btn-hints"].dispatch("click");
+for (const el of Object.values(store)) { el.classList._s.clear(); el._handlers = {}; }
+vm.runInContext(readFileSync(path.join(root, "assets/js/app.js"), "utf8"), sandbox, { filename: "app.js" });
+flush();
+check("重开页面还记得上次收起的状态", bodyClass.has("hints-off") && /已收起/.test(store["btn-hints"].textContent));
+
+console.log("=== 配色：灰粉藕粉不变，但文字看得更清 ===");
+const relLum = (hex) => {
+  const v = parseInt(hex.slice(1), 16);
+  const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  return 0.2126 * lin((v >> 16) & 255) + 0.7152 * lin((v >> 8) & 255) + 0.0722 * lin(v & 255);
+};
+const ratio = (a, b) => { const x = relLum(a), y = relLum(b); const hi = Math.max(x, y), lo = Math.min(x, y); return (hi + 0.05) / (lo + 0.05); };
+const cssVar = (name) => { const m = new RegExp("--" + name + ":\\s*(#[0-9a-fA-F]{6})").exec(css); return m ? m[1] : ""; };
+const pinkish = (hex) => { const v = parseInt(hex.slice(1), 16); return ((v >> 16) & 255) > ((v >> 8) & 255) && ((v >> 16) & 255) > (v & 255); };
+check("正文在面板上的对比度达到 12:1", ratio(cssVar("text"), cssVar("panel")) >= 12, ratio(cssVar("text"), cssVar("panel")).toFixed(1));
+check("次要文字在面板上的对比度达到 4.5:1", ratio(cssVar("muted"), cssVar("panel")) >= 4.5, ratio(cssVar("muted"), cssVar("panel")).toFixed(1));
+check("说明文字颜色够深（7:1 以上）", ratio("#5b4850", cssVar("panel")) >= 7, ratio("#5b4850", cssVar("panel")).toFixed(1));
+check("主按钮上的白字看得清（4.5:1 以上）", ratio("#ffffff", cssVar("accent")) >= 4.5, ratio("#ffffff", cssVar("accent")).toFixed(1));
+check("仍然是粉色系：页面底色和面板底色都是粉的", pinkish(cssVar("bg")) && pinkish(cssVar("panel")));
+check("第三段的复制按钮底色加深，白字看得清", /\.ans-part-3 \.ans-btn\s*\{[^}]*background:\s*#a84a72/.test(css));
+check("「获取api」链接仍是蓝色小字（保持原样）", /\.api-link\s*\{[^}]*color:\s*#2563eb[^}]*font-size:\s*11\.5px/.test(css));
 
 console.log("=== 答案三段式显示 + 放大到全屏 ===");
 check("答案框里有三段容器和三个文本区", /id="answer-parts"/.test(html) && /id="part-plain"/.test(html) && /id="part-annotated"/.test(html) && /id="part-pitfalls"/.test(html));
