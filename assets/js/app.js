@@ -100,6 +100,16 @@
     $("btn-copy-practice").addEventListener("click", function () {
       copyResult($("practice-body"), "练习题");
     });
+    $("btn-answer-full").addEventListener("click", toggleAnswerFull);
+    $("btn-copy-part1").addEventListener("click", function () { copyResult($("part-plain"), "第 ① 段（纯答案代码）", true); });
+    $("btn-copy-part2").addEventListener("click", function () { copyResult($("part-annotated"), "第 ② 段（带注释的代码）", true); });
+    $("btn-copy-part3").addEventListener("click", function () { copyResult($("part-pitfalls"), "第 ③ 段（容易出错的地方）", true); });
+    $("answer-body").addEventListener("input", function () {
+      renderAnswerParts($("answer-body").value);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e && e.key === "Escape" && $("panel-answer").classList.contains("fullscreen")) toggleAnswerFull();
+    });
     $("btn-copy-prompt").addEventListener("click", function () {
       var box = $("prompt-out");
       if (!box.value) return;
@@ -214,6 +224,7 @@
       $("answer-title").textContent = kind === "translate" ? "报错翻译" : "答案与解析";
       setOutNote("answer-note", "还没有生成。");
       $("panel-answer").classList.remove("hidden");
+      showAnswerMode(kind === "translate" ? "raw" : "parts");
     }
     $("panel-ai").classList.remove("hidden");
     $("ai-hint").textContent = HINT_WEB;
@@ -232,16 +243,105 @@
     if (el) el.textContent = text;
   }
 
-  function copyResult(box, name) {
-    if (!box || !box.value) { setAiStatus("还没有可复制的" + name + "。"); return; }
-    copyText(box.value, function (ok) {
+  function copyResult(box, name, isText) {
+    var text = !box ? "" : (isText ? box.textContent : box.value);
+    if (!text) { setAiStatus("还没有可复制的" + name + "。"); return; }
+    copyText(text, function (ok) {
       setAiStatus(ok ? name + "已复制到剪贴板。" : "复制失败：请手动选中上面的" + name + "再复制。");
     });
   }
 
   function outputFor(kind) {
-    if (kind === "practice") return { panel: $("panel-practice-out"), body: $("practice-body"), note: "practice-note" };
-    return { panel: $("panel-answer"), body: $("answer-body"), note: "answer-note" };
+    if (kind === "practice") return { panel: $("panel-practice-out"), body: $("practice-body"), note: "practice-note", parts: false };
+    return { panel: $("panel-answer"), body: $("answer-body"), note: "answer-note", parts: kind !== "translate" };
+  }
+
+  /* ---------- 「答案与解析」三段式：把 AI 的回答按 ① ② ③ 拆开显示 ---------- */
+  var PART_RE = /第\s*([123１２３一二三])\s*部分/;
+
+  function partNumber(ch) {
+    if (ch === "1" || ch === "１" || ch === "一") return 1;
+    if (ch === "2" || ch === "２" || ch === "二") return 2;
+    if (ch === "3" || ch === "３" || ch === "三") return 3;
+    return 0;
+  }
+
+  function stripFence(s) {
+    return String(s == null ? "" : s)
+      .replace(/^[\s]*```[a-zA-Z0-9+#-]*[\s]*\n?/, "")
+      .replace(/\n?[\s]*```[\s]*$/, "")
+      .trim();
+  }
+
+  /* 按 AI 输出的三段标题切分；切不出来就返回 ok:false，交给回退逻辑 */
+  function splitAnswer(text) {
+    var out = { ok: false, p1: "", p2: "", p3: "" };
+    var t = String(text == null ? "" : text).replace(/\r\n/g, "\n");
+    if (!t.trim()) return out;
+    var lines = t.split("\n");
+    var marks = [];
+    for (var i = 0; i < lines.length; i++) {
+      var m = PART_RE.exec(lines[i]);
+      if (!m || lines[i].trim().length > 60) continue;
+      var n = partNumber(m[1]);
+      if (!n) continue;
+      var dup = false;
+      for (var k = 0; k < marks.length; k++) if (marks[k].part === n) dup = true;
+      if (!dup) marks.push({ part: n, i: i });
+    }
+    if (!marks.length) return out;
+    out.ok = true;
+    for (var j = 0; j < marks.length; j++) {
+      var end = j + 1 < marks.length ? marks[j + 1].i : lines.length;
+      var body = stripFence(lines.slice(marks[j].i + 1, end).join("\n"));
+      if (marks[j].part === 1) out.p1 = body;
+      else if (marks[j].part === 2) out.p2 = body;
+      else out.p3 = body;
+    }
+    return out;
+  }
+
+  function renderAnswerParts(text, quiet) {
+    var r = splitAnswer(text);
+    if (quiet && !r.ok) return;
+    $("part-plain").textContent = r.p1;
+    $("part-annotated").textContent = r.p2;
+    $("part-pitfalls").textContent = r.p3;
+    var hint = $("answer-parse-hint");
+    if (!hint) return;
+    if (!r.ok && String(text || "").trim()) {
+      hint.textContent = "这次 AI 没有按 ① ② ③ 三段输出，所以三段没分开；完整内容在下面「原始回答」里，展开就能看、也能直接复制。";
+      hint.classList.remove("hidden");
+      if ($("answer-raw-wrap")) $("answer-raw-wrap").open = true;
+    } else {
+      hint.classList.add("hidden");
+    }
+  }
+
+  /* 答案用三段显示；「报错翻译」内容不是三段，就用原始回答那一块 */
+  function showAnswerMode(mode) {
+    var parts = $("answer-parts");
+    var raw = $("answer-raw-wrap");
+    if (!parts || !raw) return;
+    if (mode === "raw") {
+      parts.classList.add("hidden");
+      raw.open = true;
+    } else {
+      parts.classList.remove("hidden");
+      raw.open = false;
+    }
+  }
+
+  function toggleAnswerFull() {
+    var panel = $("panel-answer");
+    if (!panel) return;
+    var on = panel.classList.toggle("fullscreen");
+    if (document.body && document.body.classList) {
+      document.body.classList[on ? "add" : "remove"]("answer-full-open");
+    }
+    var btn = $("btn-answer-full");
+    if (btn) btn.textContent = on ? "退出全屏" : "放大到全屏";
+    if (on) panel.scrollTop = 0;
   }
 
   function aiKindLabel(kind) {
@@ -458,6 +558,7 @@
       target.mode = "value";
       target.panel.classList.remove("hidden");
       target.body.value = "";
+      if (target.parts) renderAnswerParts("");
       setOutNote(target.note, "正在生成…");
     }
     $("btn-ai-run").classList.add("hidden");
@@ -476,10 +577,12 @@
           target.body.value = all;
           target.body.scrollTop = target.body.scrollHeight;
         }
+        if (target.parts) renderAnswerParts(all, true);
       },
       onDone: function () {
         finishAiRun();
         if (target.note) setOutNote(target.note, "已生成（模型：" + c.model + "）");
+        if (target.parts) renderAnswerParts(target.body.value);
         if (kind === "recheck") {
           $("summary").className = "summary note";
           $("summary").innerHTML = "以下是用你生成的答案对照后，AI 给出的重新检查结果（模型：" + esc(c.model) + "）。";

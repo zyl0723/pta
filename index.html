@@ -233,10 +233,44 @@
         <h2 id="answer-title">答案与解析</h2>
         <div class="panel-actions">
           <span class="dim" id="answer-note">还没有生成。</span>
-          <button id="btn-copy-answer" class="btn tiny">复制</button>
+          <button id="btn-copy-answer" class="btn tiny">复制原始回答</button>
+          <button id="btn-answer-full" class="btn tiny pink" type="button">放大到全屏</button>
         </div>
       </div>
-      <textarea id="answer-body" class="result-out" spellcheck="false" placeholder="点上面的「生成答案与解析」，配好 API 后点「在本站生成」，答案就显示在这里。也可以把你在别的 AI 网站问到的答案粘进来，再用它做「二次检查」。"></textarea>
+
+      <p class="ai-hint hidden" id="answer-parse-hint"></p>
+
+      <div id="answer-parts" class="answer-parts">
+        <section class="ans-part ans-part-1">
+          <div class="ans-head">
+            <h3>① 纯答案代码<span class="ans-sub">不带任何注释，可直接复制提交</span></h3>
+            <button id="btn-copy-part1" class="btn tiny ans-btn" type="button">复制这段</button>
+          </div>
+          <pre id="part-plain" class="ans-body"></pre>
+        </section>
+
+        <section class="ans-part ans-part-2">
+          <div class="ans-head">
+            <h3>② 代码 + 逐行注释<span class="ans-sub">注释单独占一行，写在代码下一行</span></h3>
+            <button id="btn-copy-part2" class="btn tiny ans-btn" type="button">复制这段</button>
+          </div>
+          <pre id="part-annotated" class="ans-body"></pre>
+        </section>
+
+        <section class="ans-part ans-part-3">
+          <div class="ans-head">
+            <h3>③ 容易出错的地方<span class="ans-sub">提交前照着逐条自查</span></h3>
+            <button id="btn-copy-part3" class="btn tiny ans-btn" type="button">复制这段</button>
+          </div>
+          <pre id="part-pitfalls" class="ans-body"></pre>
+          <p class="ans-tip">提交前把上面几条逐条对一遍，别踩同样的坑；本地也可以点「立即检查」快速扫一遍常见写法错误，再点「运行并对比」用题目样例实测一下输出。</p>
+        </section>
+      </div>
+
+      <details class="answer-raw" id="answer-raw-wrap">
+        <summary>原始回答（AI 的完整原文；自己粘贴答案、以及「二次检查」用的就是这里）</summary>
+        <textarea id="answer-body" class="result-out" spellcheck="false" placeholder="点上面的「生成答案与解析」，配好 API 后点「在本站生成」，答案就显示在这里。也可以把你在别的 AI 网站问到的答案粘进来，再用它做「二次检查」。"></textarea>
+      </details>
     </div>
   </section>
 

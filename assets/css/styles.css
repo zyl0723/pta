@@ -301,6 +301,51 @@ pre.stdout {
   background: #fffafc; border: 1px solid #eed7e0; border-radius: 8px; padding: 10px 12px;
 }
 
+/* ---------- 「答案与解析」三段式显示（淡粉 → 深粉，逐段加深） ---------- */
+.answer-parts { display: flex; flex-direction: column; gap: 16px; margin-top: 12px; }
+.ans-part { border-radius: 10px; border: 1px solid #f0dbe5; padding: 10px 12px 12px; }
+.ans-part-1 { background: #fdf6fa; border-color: #f5e3ec; }
+.ans-part-2 { background: #f8e6f0; border-color: #edd2e1; }
+.ans-part-3 { background: #f2d3e2; border-color: #e4bdd1; }
+
+.ans-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.ans-head h3 { margin: 0; font-size: 13.5px; color: #6d3d51; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ans-sub { font-size: 11.5px; font-weight: 400; color: #9c7386; }
+
+.ans-body {
+  margin: 0; min-height: 230px; max-height: 520px; overflow: auto;
+  white-space: pre-wrap; word-break: break-word;
+  font: 400 12.5px/20px var(--mono); color: #3f222d;
+  background: rgba(255, 255, 255, 0.74); border: 1px solid rgba(255, 255, 255, 0.92);
+  border-radius: 8px; padding: 10px 12px;
+}
+.ans-body:empty::before { content: "（还没有内容）"; color: #ad8b9b; font-family: var(--sans); }
+.ans-tip { margin: 8px 0 0; font-size: 11.5px; line-height: 1.7; color: #7d5063; }
+
+/* 这三段里的按钮统一走粉色，和面板底色同一色系 */
+.ans-btn { background: #f7e2ec; border-color: #e9c6d8; color: #7c4159; }
+.ans-btn:hover { background: #f1d2e2; }
+.ans-part-2 .ans-btn { background: #eed0e0; border-color: #e0b3ca; color: #6d3d51; }
+.ans-part-2 .ans-btn:hover { background: #e7c1d6; }
+.ans-part-3 .ans-btn { background: #d693b7; border-color: #c882a8; color: #fff; }
+.ans-part-3 .ans-btn:hover { background: #cd86ae; }
+
+.panel-answer .btn.pink { background: #f6dbe8; border-color: #e8c2d6; color: #7c4159; }
+.panel-answer .btn.pink:hover { background: #efcbdd; }
+
+/* 原始回答：默认收起，需要时再展开 */
+details.answer-raw { margin-top: 14px; border-top: 1px dashed #eed7e0; padding-top: 10px; }
+details.answer-raw summary { cursor: pointer; font-size: 12px; color: #8a4f66; }
+details.answer-raw[open] summary { margin-bottom: 8px; }
+
+/* 放大到全屏 */
+.panel.answer-panel.fullscreen {
+  position: fixed; inset: 0; z-index: 1000; margin: 0; border-radius: 0;
+  max-height: none; overflow: auto; padding: 16px 18px 26px;
+}
+.panel.answer-panel.fullscreen .ans-body { max-height: none; min-height: 300px; }
+body.answer-full-open { overflow: hidden; }
+
 /* ---------- 响应式 ---------- */
 @media (max-width: 1000px) {
   .layout { grid-template-columns: 1fr; }

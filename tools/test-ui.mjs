@@ -183,8 +183,9 @@ flush();
 store["btn-answer"].dispatch("click");
 check("答案面板出现", !store["panel-ai"].classList.contains("hidden"));
 check("提示词含题目原文", store["prompt-out"].value.indexOf("两数求和") >= 0);
-check("提示词要求逐行注释", /每一行末尾/.test(store["prompt-out"].value));
+check("提示词要求注释单独占一行写在代码下一行", /下一行/.test(store["prompt-out"].value) && /不要把 \/\/ 注释跟在代码同一行末尾/.test(store["prompt-out"].value));
 check("提示词要求列出易错点", /容易出错的地方/.test(store["prompt-out"].value));
+check("提示词要求严格按三段标题输出", /第 1 部分/.test(store["prompt-out"].value) && /第 2 部分/.test(store["prompt-out"].value) && /第 3 部分/.test(store["prompt-out"].value));
 check("提示词带上自动检查出的错误点", /scanf/.test(store["prompt-out"].value), store["prompt-out"].value.slice(0, 120));
 check("提示词带上 PTA 批改提示", store["prompt-out"].value.indexOf("答案错误") >= 0);
 
@@ -353,6 +354,51 @@ for (const el of Object.values(store)) { el.classList._s.clear(); el._handlers =
 vm.runInContext(readFileSync(path.join(root, "assets/js/app.js"), "utf8"), sandbox, { filename: "app.js" });
 flush();
 check("勾过之后再次进站不再弹出", store["welcome"].classList.contains("hidden"));
+
+console.log("=== 答案三段式显示 + 放大到全屏 ===");
+check("答案框里有三段容器和三个文本区", /id="answer-parts"/.test(html) && /id="part-plain"/.test(html) && /id="part-annotated"/.test(html) && /id="part-pitfalls"/.test(html));
+check("有「放大到全屏」按钮", /id="btn-answer-full"/.test(html));
+check("三段各自有复制按钮", /id="btn-copy-part1"/.test(html) && /id="btn-copy-part2"/.test(html) && /id="btn-copy-part3"/.test(html));
+check("原始回答仍保留，收在可展开的 details 里", /<details[^>]*id="answer-raw-wrap"/.test(html));
+
+const bgOf = (cls) => { const m = new RegExp("." + cls + "[^}]*background:\\s*(#[0-9a-fA-F]{6})").exec(css); return m ? m[1] : ""; };
+const lum = (h) => { const v = parseInt(h.slice(1), 16); return ((v >> 16) & 255) * 0.299 + ((v >> 8) & 255) * 0.587 + (v & 255) * 0.114; };
+const b1 = bgOf("ans-part-1"), b2 = bgOf("ans-part-2"), b3 = bgOf("ans-part-3");
+check("三段背景从淡粉到深粉逐段加深", !!b1 && !!b2 && !!b3 && lum(b1) > lum(b2) && lum(b2) > lum(b3), [b1, b2, b3].join(" > "));
+check("全屏样式已定义", /\.panel\.answer-panel\.fullscreen/.test(css));
+
+const sampleAnswer = [
+  "===== 第 1 部分：纯答案代码（不加注释） =====",
+  "#include <stdio.h>",
+  "int main(void) { return 0; }",
+  "===== 第 2 部分：带注释的代码（注释单独占一行） =====",
+  "#include <stdio.h>",
+  "// 引入标准输入输出头文件",
+  "int main(void) { return 0; }",
+  "===== 第 3 部分：容易出错的地方 =====",
+  "1. 忘了写 & 就会读到乱码"
+].join("\n");
+store["answer-body"].value = sampleAnswer;
+store["answer-body"].dispatch("input");
+check("第 ① 段只放纯代码", /int main/.test(store["part-plain"].textContent) && !/\/\//.test(store["part-plain"].textContent), store["part-plain"].textContent.slice(0, 60));
+check("第 ② 段是带注释的版本", /\/\/ 引入标准输入输出头文件/.test(store["part-annotated"].textContent));
+check("第 ③ 段是易错点", /忘了写/.test(store["part-pitfalls"].textContent));
+check("标题行不会留进正文", !/第 1 部分/.test(store["part-plain"].textContent) && !/第 3 部分/.test(store["part-pitfalls"].textContent));
+check("按三段输出时不显示解析提示", store["answer-parse-hint"].classList.contains("hidden"));
+
+store["answer-body"].value = "这是一段没有分段标题的回答。";
+store["answer-body"].dispatch("input");
+check("没按三段输出时给出提示并展开原始回答", !store["answer-parse-hint"].classList.contains("hidden") && /原始回答/.test(store["answer-parse-hint"].textContent) && store["answer-raw-wrap"].open === true);
+
+store["btn-answer-full"].dispatch("click");
+check("点「放大到全屏」进入全屏", store["panel-answer"].classList.contains("fullscreen"));
+check("全屏后按钮变成「退出全屏」", store["btn-answer-full"].textContent === "退出全屏", store["btn-answer-full"].textContent);
+store["btn-answer-full"].dispatch("click");
+check("再点一次退出全屏并恢复按钮文案", !store["panel-answer"].classList.contains("fullscreen") && store["btn-answer-full"].textContent === "放大到全屏");
+
+store["pta-feedback"].value = "测试点 3　段错误（Segmentation Fault）";
+store["btn-translate"].dispatch("click");
+check("翻译结果不走三段式，直接展开原始回答那一段", store["answer-parts"].classList.contains("hidden") && store["answer-raw-wrap"].open === true);
 
 console.log("=== 布局回归：错误列表不能盖住下方面板 ===");
 check("检查结果面板不再吸附（sticky 会盖住紧随其后的面板）", html.indexOf("panel sticky") < 0, "index.html 里仍存在 panel sticky");
