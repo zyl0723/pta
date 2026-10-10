@@ -82,9 +82,19 @@ body.hints-off #answer-parse-hint { display: block; }
   background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
   padding: 16px; box-shadow: 0 1px 2px rgba(24, 39, 75, 0.04);
 }
-.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.panel-head h2 { font-size: 14.5px; letter-spacing: 0.2px; }
-.panel-actions { display: flex; align-items: center; gap: 8px; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.panel-head h2 { font-size: 14.5px; letter-spacing: 0.2px; flex: 0 0 auto; white-space: nowrap; }
+.panel-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
+
+/* 「语言 / 难度」这两个下拉框：小标题 + 下拉，跟着面板标题排在右上角 */
+.pick { display: inline-flex; align-items: center; gap: 5px; }
+.pick-label { font-size: 12.5px; color: #6b5860; }
+.lang-status { display: inline-block; margin-left: 8px; font-weight: 650; color: #8a2f53; }
+
+/* 选了非 C 语言时的提醒：本地不做检查、不跑代码 */
+.field-note.warn-note {
+  background: var(--warn-soft); border-color: #edd9b4; border-left-color: var(--warn); color: #5b4850;
+}
 
 /* ---------- 编辑器 ---------- */
 .editor {

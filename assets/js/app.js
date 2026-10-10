@@ -19,18 +19,53 @@
     info: { label: "建议", cls: "sev-info", mark: "·", hint: "不影响对错，属于写法层面的建议" }
   };
 
-  var STARTER =
-    '#include <stdio.h>\n' +
-    '\n' +
-    'int main() {\n' +
-    '    int a, b;\n' +
-    '    scanf("%d %d", &a, &b);\n' +
-    '    printf("%d\\n", a + b);\n' +
-    '    return 0;\n' +
-    '}\n';
+  /* 每种语言的入门样例：初始化、载入示例、切换语言时用 */
+  var STARTERS = {
+    c: '#include <stdio.h>\n' +
+       '\n' +
+       'int main() {\n' +
+       '    int a, b;\n' +
+       '    scanf("%d %d", &a, &b);\n' +
+       '    printf("%d\\n", a + b);\n' +
+       '    return 0;\n' +
+       '}\n',
+    python: '# 读入一行里的两个整数，输出它们的和\na, b = map(int, input().split())\nprint(a + b)\n',
+    cpp: '#include <iostream>\n' +
+         'using namespace std;\n' +
+         '\n' +
+         'int main() {\n' +
+         '    int a, b;\n' +
+         '    cin >> a >> b;\n' +
+         '    cout << a + b << endl;\n' +
+         '    return 0;\n' +
+         '}\n',
+    java: 'import java.util.Scanner;\n' +
+          '\n' +
+          'public class Main {\n' +
+          '    public static void main(String[] args) {\n' +
+          '        Scanner sc = new Scanner(System.in);\n' +
+          '        int a = sc.nextInt(), b = sc.nextInt();\n' +
+          '        System.out.println(a + b);\n' +
+          '    }\n' +
+          '}\n'
+  };
+
+  var PLACEHOLDERS = {
+    c: "把你的 C 代码粘贴到这里……",
+    python: "把你的 Python 代码粘贴到这里……",
+    cpp: "把你的 C++ 代码粘贴到这里……",
+    java: "把你的 Java 代码粘贴到这里……"
+  };
+
+  var LANG_LABEL = { c: "C 语言", python: "Python", cpp: "C++", java: "Java" };
+  var LEVEL_LABEL = { easy: "简单", normal: "中等", hard: "困难" };
+  var LANG_KEY = "pta-code-lang";
+  var LEVEL_KEY = "pta-answer-level";
 
   function init() {
-    $("code").value = STARTER;
+    loadLangAndLevel();
+    $("code").value = starterFor(curLang());
+    applyLangAndLevel();
     fillProblemSelect();
     bindEvents();
     initWelcome();
@@ -76,10 +111,12 @@
       $("code").focus();
     });
     $("btn-sample").addEventListener("click", function () {
-      $("code").value = STARTER;
+      $("code").value = starterFor(curLang());
       refreshGutter();
       analyzeNow();
     });
+    $("code-lang").addEventListener("change", onLangChange);
+    $("answer-level").addEventListener("change", onLevelChange);
     $("btn-hints").addEventListener("click", toggleHints);
     $("problem-select").addEventListener("change", onProblemChange);
     $("btn-fill-reference").addEventListener("click", fillReference);
@@ -206,6 +243,80 @@
     setHints(lsGet(HINTS_KEY) === "1");
   }
 
+  /* ---------- 语言 / 难度：整个页面的检查、答案、练习、翻译都按这两个选择来 ---------- */
+  /* 下拉框没选、或者值不认识时，一律退回 C 语言 / 简单，不然后面会当成「非 C」把功能全关掉 */
+  function curLang() {
+    var v = $("code-lang") ? $("code-lang").value : "";
+    return STARTERS[v] ? v : "c";
+  }
+  function curLevel() {
+    var v = $("answer-level") ? $("answer-level").value : "";
+    return LEVEL_LABEL[v] ? v : "easy";
+  }
+  function starterFor(lang) { return STARTERS[lang] || STARTERS.c; }
+
+  function loadLangAndLevel() {
+    var lang = lsGet(LANG_KEY);
+    var level = lsGet(LEVEL_KEY);
+    if (lang && STARTERS[lang] && $("code-lang")) $("code-lang").value = lang;
+    if (level && LEVEL_LABEL[level] && $("answer-level")) $("answer-level").value = level;
+  }
+
+  /* C 语言：本机的检查规则和解释器都能用。其他语言：本机没有对应的解释器，
+     把「检查 / 运行」关掉，别拿 C 的规则去判 Python / C++ / Java 的代码。 */
+  function applyLangAndLevel() {
+    var lang = curLang();
+    var level = curLevel();
+    var isC = lang === "c";
+    var noLocal = "本机只装了 C 语言的检查规则和解释器：换回 C 语言才能用，或者用右边「答案与解析」交给你自己的 AI。";
+    ["btn-check", "btn-run", "btn-check-run", "btn-fill-reference", "btn-dev-check", "btn-dev-run"].forEach(function (id) {
+      var el = $(id);
+      if (!el) return;
+      el.disabled = !isC;
+      el.title = isC ? "" : noLocal;
+    });
+    ["problem-select", "chk-strict"].forEach(function (id) {
+      var el = $(id);
+      if (!el) return;
+      el.disabled = !isC;
+      el.title = isC ? "" : "示例数据和参考实现都是 C 语言的。";
+    });
+    var warn = $("lang-warn");
+    if (warn) warn.classList[isC ? "add" : "remove"]("hidden");
+    var warnName = $("lang-warn-name");
+    if (warnName) warnName.textContent = (LANG_LABEL[lang] || "这门") + "语言";
+    var status = $("lang-status");
+    if (status) {
+      status.textContent = "当前：" + (LANG_LABEL[lang] || lang) + " · " + (LEVEL_LABEL[level] || level) + "答案"
+        + (isC ? "" : "（本机不跑代码，交给你的 AI）");
+    }
+    var box = $("code");
+    if (box && PLACEHOLDERS[lang]) box.placeholder = PLACEHOLDERS[lang];
+  }
+
+  /* 框里还是上一门语言的示例（或者是空的）就换成新语言的示例，免得对着 C 代码写 Python */
+  function isStarterText(text) {
+    var t = String(text == null ? "" : text);
+    if (!t.trim()) return true;
+    for (var k in STARTERS) { if (STARTERS[k] === t) return true; }
+    return false;
+  }
+
+  function onLangChange() {
+    var box = $("code");
+    if (box && isStarterText(box.value)) box.value = starterFor(curLang());
+    lsSet(LANG_KEY, curLang());
+    applyLangAndLevel();
+    refreshGutter();
+    analyzeNow();
+    if (box && typeof box.focus === "function") box.focus();
+  }
+
+  function onLevelChange() {
+    lsSet(LEVEL_KEY, curLevel());
+    applyLangAndLevel();
+  }
+
   /* ---------- 提示词：本页面不联网，只把文本拼好交给使用者自己的 AI ---------- */
   function needProblem() {
     var box = $("problem-text");
@@ -242,7 +353,9 @@
       problem: $("problem-text").value,
       code: $("code").value,
       feedback: $("pta-feedback").value,
-      findings: state.findings
+      findings: state.findings,
+      lang: curLang(),
+      level: curLevel()
     };
     var text;
     if (kind === "answer") {
@@ -261,7 +374,9 @@
       setOutNote("practice-note", "还没有生成。");
       $("panel-practice-out").classList.remove("hidden");
     } else {
-      $("answer-title").textContent = kind === "translate" ? "报错翻译" : "答案与解析";
+      $("answer-title").textContent = kind === "translate"
+        ? "报错翻译（" + LANG_LABEL[curLang()] + "）"
+        : "答案与解析（" + LANG_LABEL[curLang()] + " · " + LEVEL_LABEL[curLevel()] + "）";
       setOutNote("answer-note", "还没有生成。");
       $("panel-answer").classList.remove("hidden");
       showAnswerMode(kind === "translate" ? "raw" : "parts");
@@ -448,6 +563,10 @@
 
   /* 终端里的「检查」：复用本地静态检查，把结果打一份到终端里 */
   function devCheck() {
+    if (curLang() !== "c") {
+      devWrite("$ 检查\n本机只装了 C 语言的检查规则：把语言换回 C 才能在这里检查，或者用右边的「答案与解析」交给你自己的 AI。");
+      return;
+    }
     analyzeNow();
     var f = state.findings || [];
     if (!f.length) {
@@ -464,9 +583,13 @@
   }
 
   function devRun() {
+    if (curLang() !== "c") {
+      devWrite("$ 运行\n本机只装了 C 语言的解释器：把语言换回 C 才能运行，或者用右边的「答案与解析」交给你自己的 AI。");
+      return;
+    }
     if (String($("dev-input").value).trim()) addDevInput();
     var code = $("code").value;
-    if (!code.trim()) { devWrite("$ 运行\n还没有代码：先把 C 代码粘到上面的编辑框里。"); return; }
+    if (!code.trim()) { devWrite("$ 运行\n还没有代码：先把代码粘到上面的编辑框里。"); return; }
     var stdin = $("stdin").value;
     var started = Date.now();
     var result;
@@ -521,7 +644,9 @@
       code: $("code").value,
       feedback: $("pta-feedback").value,
       answer: $("answer-body").value,
-      findings: state.findings
+      findings: state.findings,
+      lang: curLang(),
+      level: curLevel()
     });
     $("prompt-out").value = text;
     state.aiTarget = "recheck";
@@ -835,6 +960,12 @@
   /* ---------- 静态检查 ---------- */
   function analyzeNow() {
     exitRecheck();
+    if (curLang() !== "c") {
+      state.findings = [];
+      refreshGutter();
+      renderNoLocalCheck();
+      return;
+    }
     var code = $("code").value;
     var result = { findings: [] };
     try {
@@ -845,6 +976,15 @@
     state.findings = result.findings;
     refreshGutter();
     renderFindings();
+  }
+
+  /* 选了非 C 语言：本地没有对应的检查规则，直接说清楚，别拿 C 的规则乱报 */
+  function renderNoLocalCheck() {
+    var lang = LANG_LABEL[curLang()] || "这门语言";
+    var summary = $("summary");
+    summary.className = "summary note";
+    summary.innerHTML = "当前语言是 <b>" + esc(lang) + "</b>：本机只装了 C 语言的检查规则，所以这里不做本地检查（免得拿 C 的规则去误报）。";
+    $("findings").innerHTML = '<div class="empty">想看「哪里写错了」，用右边的「答案与解析」或「二次检查」：把题目粘到右边，页面会拼好一段提问，用你自己的 AI 检查。提示词里已经写明语言和难度。</div>';
   }
 
   function renderFindings() {
@@ -893,6 +1033,11 @@
 
   /* ---------- 运行与对比 ---------- */
   function runNow() {
+    if (curLang() !== "c") {
+      $("run-status").textContent = "本机只装了 C 语言的解释器：把语言换回 C 才能运行，或者用右边的「答案与解析」交给你自己的 AI。";
+      $("run-body").innerHTML = "";
+      return;
+    }
     var code = $("code").value;
     var stdin = $("stdin").value;
     var expected = $("expected").value;

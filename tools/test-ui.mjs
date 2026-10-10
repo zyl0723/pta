@@ -201,8 +201,8 @@ check("提示词含题目原文", store["prompt-out"].value.indexOf("两数求�
 check("提示词要求注释单独占一行写在代码下一行", /下一行/.test(store["prompt-out"].value) && /不要把 \/\/ 注释跟在代码同一行末尾/.test(store["prompt-out"].value));
 check("提示词要求列出易错点", /容易出错的地方/.test(store["prompt-out"].value));
 check("提示词要求严格按三段标题输出", /第 1 部分/.test(store["prompt-out"].value) && /第 2 部分/.test(store["prompt-out"].value) && /第 3 部分/.test(store["prompt-out"].value));
-check("提示词要求答案尽量简单、照顾零基础", /新手/.test(store["prompt-out"].value) && /最简单/.test(store["prompt-out"].value));
-check("提示词明确不要花哨写法", /不要用宏/.test(store["prompt-out"].value) && /不要用指针技巧/.test(store["prompt-out"].value) && /不要用递归/.test(store["prompt-out"].value));
+check("默认难度是「简单」：说清读者是新手、目标最好懂", /答案难度：简单/.test(store["prompt-out"].value) && /刚学编程的新手/.test(store["prompt-out"].value) && /一眼能看懂/.test(store["prompt-out"].value));
+check("「简单」明确不要花哨写法", /不要用任何技巧/.test(store["prompt-out"].value) && /位运算 \/ 宏 \/ 递归/.test(store["prompt-out"].value) && /列表推导式 \/ lambda/.test(store["prompt-out"].value));
 check("提示词要求变量名一看就懂", /变量名用 a、b、n、i、sum/.test(store["prompt-out"].value));
 check("提示词带上自动检查出的错误点", /scanf/.test(store["prompt-out"].value), store["prompt-out"].value.slice(0, 120));
 check("提示词带上 PTA 批改提示", store["prompt-out"].value.indexOf("答案错误") >= 0);
@@ -305,7 +305,7 @@ sandbox.PTAAI.chat = function (opts) {
 store["problem-text"].value = "7-1 两数求和\n输入 a 和 b，输出 a + b。";
 store["answer-body"].value = "";
 store["btn-answer"].dispatch("click");
-check("点「生成答案与解析」后答案框标题是「答案与解析」", store["answer-title"].textContent === "答案与解析", store["answer-title"].textContent);
+check("点「生成答案与解析」后答案框标题带上语言与难度", store["answer-title"].textContent === "答案与解析（C 语言 · 简单）", store["answer-title"].textContent);
 store["btn-ai-run"].dispatch("click");
 check("AI 的答案写进右侧单独的答案框", store["answer-body"].value.indexOf("AI 写出来的正文内容") >= 0 && !store["panel-answer"].classList.contains("hidden"));
 
@@ -519,6 +519,79 @@ check("退出全屏按钮文案恢复", store["btn-code-full"].textContent === "
 store["btn-code-full"].dispatch("click");
 document.dispatch("keydown", { key: "Escape" });
 check("按 Esc 也能退出代码全屏", !store["panel-code"].classList.contains("fullscreen") && !bodyClass.has("code-full-open"));
+
+console.log("=== 语言与难度：检查、答案、练习都按它们来 ===");
+check("「你的代码」右上角有语言下拉框（C / Python / C++ / Java）", /id="code-lang"/.test(html) && /<option value="c" selected>C 语言<\/option>/.test(html) && /<option value="python">Python<\/option>/.test(html) && /<option value="cpp">C\+\+<\/option>/.test(html) && /<option value="java">Java<\/option>/.test(html));
+check("还有难度下拉框（简单 / 中等 / 困难）", /id="answer-level"/.test(html) && /<option value="easy" selected>简单<\/option>/.test(html) && /<option value="normal">中等<\/option>/.test(html) && /<option value="hard">困难<\/option>/.test(html));
+check("两个下拉框都在「你的代码」面板里", html.indexOf('id="panel-code"') < html.indexOf('id="code-lang"') && html.indexOf('id="code-lang"') < html.indexOf('id="btn-sample"'));
+check("默认 C 语言：本地检查与运行可用", !store["btn-check"].disabled && !store["btn-run"].disabled && !store["btn-dev-run"].disabled && store["lang-warn"].classList.contains("hidden"));
+check("状态行写明当前语言与难度", /C 语言 · 简单答案/.test(store["lang-status"].textContent), store["lang-status"].textContent);
+
+store["code-lang"].value = "python";
+store["code-lang"].dispatch("change");
+flush();
+check("切到 Python 后本地检查/运行全部关掉", store["btn-check"].disabled && store["btn-run"].disabled && store["btn-check-run"].disabled && store["btn-fill-reference"].disabled && store["problem-select"].disabled && store["chk-strict"].disabled && store["btn-dev-run"].disabled && store["btn-dev-check"].disabled);
+check("切到 Python 后给出醒目提醒", !store["lang-warn"].classList.contains("hidden") && /Python/.test(store["lang-warn-name"].textContent));
+check("切到 Python 后状态行跟着变", /Python · 简单答案/.test(store["lang-status"].textContent), store["lang-status"].textContent);
+check("切到 Python 后不再用 C 的规则做本地检查", /本机只装了 C 语言的检查规则/.test(store["summary"].innerHTML), store["summary"].innerHTML.slice(0, 90));
+check("切到 Python 后不会擅自改掉你写的代码", store["code"].value.indexOf("#include <stdio.h>") >= 0, store["code"].value.slice(0, 30));
+store["btn-sample"].dispatch("click");
+flush();
+check("切到 Python 后「载入示例」给的是 Python 代码", store["code"].value.indexOf("input().split()") >= 0 && store["code"].value.indexOf("#include") < 0, store["code"].value.slice(0, 40));
+check("切到 Python 后示例代码用 Python 的占位提示", /Python 代码粘贴到这里/.test(store["code"].placeholder), store["code"].placeholder);
+check("语言选择记在本机", lsData.get("pta-code-lang") === "python");
+store["btn-run"].dispatch("click");
+flush();
+check("Python 下点「运行并对比」只提醒、不硬跑", /本机只装了 C 语言的解释器/.test(store["run-status"].textContent), store["run-status"].textContent);
+
+store["problem-text"].value = "7-1 两数求和\n输入两个整数，输出它们的和。";
+store["btn-answer"].dispatch("click");
+check("提示词写明语言：Python 3 与它的输入输出写法", /语言：Python 3/.test(store["prompt-out"].value) && /map\(int, input\(\)\.split\(\)\)/.test(store["prompt-out"].value));
+check("提示词把语言与难度标成最高优先级", /最高优先级/.test(store["prompt-out"].value) && /全部必须用 Python 3 写/.test(store["prompt-out"].value));
+check("提示词带上 Python 常见坑", /忘了转 int|setrecursionlimit/.test(store["prompt-out"].value));
+check("答案框标题也写出语言与难度", store["answer-title"].textContent === "答案与解析（Python · 简单）", store["answer-title"].textContent);
+store["btn-practice"].dispatch("click");
+check("练习也按选的语言出题", /语言：Python 3/.test(store["prompt-out"].value) && /参考答案一律用 Python 3 写/.test(store["prompt-out"].value));
+
+store["answer-level"].value = "hard";
+store["answer-level"].dispatch("change");
+check("难度记在本机", lsData.get("pta-answer-level") === "hard");
+store["btn-answer"].dispatch("click");
+check("「困难」写进提示词：最快、最好用", /答案难度：困难/.test(store["prompt-out"].value) && /最快跑过所有测试点/.test(store["prompt-out"].value) && /collections \/ itertools|qsort/.test(store["prompt-out"].value));
+check("「困难」只要求关键行注释", /只在关键行/.test(store["prompt-out"].value));
+store["answer-level"].value = "normal";
+store["answer-level"].dispatch("change");
+store["btn-answer"].dispatch("click");
+check("「中等」要求简洁但看得懂", /答案难度：中等/.test(store["prompt-out"].value) && /学过基础的人能看懂/.test(store["prompt-out"].value) && /不要引入复杂算法/.test(store["prompt-out"].value));
+
+store["code-lang"].value = "java";
+store["code-lang"].dispatch("change");
+store["btn-answer"].dispatch("click");
+check("Java 的提示词点出类名必须是 Main", /语言：Java/.test(store["prompt-out"].value) && /类名必须是 Main/.test(store["prompt-out"].value));
+store["code-lang"].value = "cpp";
+store["code-lang"].dispatch("change");
+store["btn-answer"].dispatch("click");
+check("C++ 的提示词点出 bits/stdc++.h", /语言：C\+\+/.test(store["prompt-out"].value) && /bits\/stdc\+\+\.h/.test(store["prompt-out"].value));
+
+store["code-lang"].value = "c";
+store["code-lang"].dispatch("change");
+flush();
+check("换回 C 后本地检查与运行恢复", !store["btn-check"].disabled && !store["btn-run"].disabled && store["lang-warn"].classList.contains("hidden"));
+check("换回 C 后示例代码是 C 的", store["code"].value.indexOf("#include <stdio.h>") >= 0, store["code"].value.slice(0, 30));
+
+store["code-lang"].value = "python";
+store["code-lang"].dispatch("change");
+store["answer-level"].value = "hard";
+store["answer-level"].dispatch("change");
+for (const el of Object.values(store)) { el.classList._s.clear(); el._handlers = {}; }
+vm.runInContext(readFileSync(path.join(root, "assets/js/app.js"), "utf8"), sandbox, { filename: "app.js" });
+flush();
+check("重开页面还记得上次选的语言和难度", store["code-lang"].value === "python" && store["answer-level"].value === "hard" && store["btn-check"].disabled);
+store["code-lang"].value = "c";
+store["code-lang"].dispatch("change");
+store["answer-level"].value = "easy";
+store["answer-level"].dispatch("change");
+flush();
 
 console.log("=== 内置解释器不再依赖 eval（严格 CSP 下也能运行） ===");
 const vendor = readFileSync(path.join(root, "assets/vendor/jscpp.js"), "utf8");

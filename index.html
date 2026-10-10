@@ -31,6 +31,21 @@
       <div class="panel-head">
         <h2>你的代码</h2>
         <div class="panel-actions">
+          <label class="pick"><span class="pick-label">语言</span>
+            <select id="code-lang" class="select select-tiny" title="选哪种语言：检查、答案、练习、翻译全都按它来">
+              <option value="c" selected>C 语言</option>
+              <option value="python">Python</option>
+              <option value="cpp">C++</option>
+              <option value="java">Java</option>
+            </select>
+          </label>
+          <label class="pick"><span class="pick-label">难度</span>
+            <select id="answer-level" class="select select-tiny" title="答案要多难：简单＝最好懂；中等＝简洁一点；困难＝直接给最快最好用的">
+              <option value="easy" selected>简单</option>
+              <option value="normal">中等</option>
+              <option value="hard">困难</option>
+            </select>
+          </label>
           <button id="btn-hints" class="btn tiny" type="button" aria-pressed="false" title="网站使用提示：点一下把每个模块的说明文字收起来，再点一下显示回来">网站使用提示</button>
           <button id="btn-sample" class="btn tiny">载入示例</button>
           <button id="btn-clear" class="btn tiny">清空</button>
@@ -41,6 +56,10 @@
 
       <div class="field-note mini">
         <b>两种检查怎么选？</b><b>「立即检查」</b>用页面自带的规则找常见写法错误，不联网、不花额度，边打字边跑；<b>「二次检查」</b>是拿你在「答案与解析」里生成的那份答案当标准，用<b>你自己的 AI</b> 把你这段代码重新逐行对照检查一遍，结果会<b>覆盖右边「检查结果」</b>。<br>用「二次检查」要先做到两件事：① 右边「题目」框里填了题；② 已经生成过答案。而且<b>每次改完代码都要再点一次「二次检查」</b>才会用新代码重查——想回到本地静态检查，点一下「立即检查」就行。
+      </div>
+
+      <div class="field-note mini" id="lang-note">
+        <b>右上角的「语言」和「难度」决定这一个页面怎么干活。</b>检查、答案与解析、练习、翻译、二次检查，全都按你选的语言和难度来。<b>语言选 C</b> 时本机自带检查规则和解释器，能直接检查、能真跑；选 <b>Python / C++ / Java</b> 时本机没有对应的解释器，只能把题目和你的代码交给你自己的 AI 检查（网页拼好的提示词里会写明语言和难度）。<span id="lang-status" class="lang-status">当前：C 语言 · 简单答案</span>
       </div>
 
       <div class="editor" id="editor">
@@ -54,6 +73,10 @@
         <button id="btn-run" class="btn">运行并对比</button>
         <button id="btn-check-run" class="btn ghost">检查 + 运行</button>
         <span class="toolbar-tip">边打字边检查，结果在右侧。</span>
+      </div>
+
+      <div id="lang-warn" class="field-note warn-note hidden">
+        当前语言不是 C：本机只装了 C 语言的检查规则和解释器，所以「立即检查」「运行并对比」和全屏终端里的运行先关掉了，不给你乱报错。想看答案、想让人帮你检查，用右边的「答案与解析」「二次检查」——拼好的提示词里已经写明用的是 <b id="lang-warn-name">这门语言</b>。
       </div>
 
       <section id="dev" class="dev hidden">
@@ -299,7 +322,7 @@
 
 <section id="cheatsheet" class="cheatsheet hidden">
   <h2>常见错误速查</h2>
-  <p class="cs-intro">下面这些是基础题里最常出现的问题，每一条都给出「错的写法」和「正确的写法」。点右侧检查结果里的条目会自动跳到对应行。</p>
+  <p class="cs-intro">下面这些是基础题里最常出现的问题，每一条都给出「错的写法」和「正确的写法」（例子都是 C 语言的写法；页面自带的检查规则也只针对 C）。点右侧检查结果里的条目会自动跳到对应行。</p>
   <div class="cs-grid">
 
     <article class="cs-card">
