@@ -627,9 +627,9 @@
       if (/,\s*$/.test(ml)) continue;              /* 结尾是逗号：多半是跨行的声明，不报 */
       var prev = li > 0 ? (maskedLines[li - 1] || "") : "";
       if (/[(,]\s*$/.test(prev)) continue;          /* 上一行还没写完，不报 */
-      add("error", starts2[li], "这一行结尾少了分号",
-        "C 语言每条语句结尾都要写英文分号 ; 。这里没写，编译器会把这一行和下一行连着读，然后报一堆看不懂的错。",
-        "在这一行末尾补一个分号 ;（要英文的）。");
+      add("error", starts2[li] + ml.replace(/[ \t]+$/, "").length, "这一行结尾少了分号 ;",
+        "每条语句结尾都要写英文分号 ;，这里没写，编译器会把这一行和下一行连着读。",
+        "就在这个位置补一个 ;（英文分号）。");
     }
 
     findings.sort(function (x, y) { return x.line - y.line || x.column - y.column; });

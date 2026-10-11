@@ -261,7 +261,8 @@ pre.stdout {
 .sev-info .f-badge { background: var(--info); }
 .f-line { font: 400 12px/1 var(--mono); color: var(--muted); background: #f9eef3; padding: 3px 6px; border-radius: 5px; }
 .f-title { font-weight: 600; font-size: 13.5px; }
-.f-code { margin: 7px 0 0; padding: 7px 9px; background: #fdf7fa; border: 1px solid var(--line); border-radius: 6px; font: 400 12.5px/18px var(--mono); white-space: pre-wrap; word-break: break-all; color: #3b2e35; }
+/* 不折行、可横向滚动：这样下面那个 ^ 才能对准出问题的那一列 */
+.f-code { margin: 7px 0 0; padding: 7px 9px; background: #fdf7fa; border: 1px solid var(--line); border-radius: 6px; font: 400 12.5px/18px var(--mono); white-space: pre; overflow-x: auto; color: #3b2e35; }
 .f-detail { margin-top: 7px; font-size: 13px; color: var(--text-soft); }
 .f-fix { margin-top: 7px; font-size: 13px; color: #16704a; background: var(--ok-soft); border-radius: 7px; padding: 8px 10px; }
 .f-fix span { font-weight: 600; }

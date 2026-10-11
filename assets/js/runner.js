@@ -28,6 +28,58 @@
     return String(s).split("\n");
   }
 
+  /* 找出第一个没有关上的括号（跳过字符串、字符、注释），用来把「括号不配对」直接指到那个字符 */
+  function findUnclosedBracket(src) {
+    var t = String(src == null ? "" : src);
+    var stack = [];
+    var line = 1, col = 1, i = 0;
+    while (i < t.length) {
+      var ch = t.charAt(i), next = t.charAt(i + 1);
+      if (ch === "\n") { line++; col = 1; i++; continue; }
+      if (ch === "/" && next === "/") { while (i < t.length && t.charAt(i) !== "\n") i++; continue; }
+      if (ch === "/" && next === "*") {
+        i += 2; col += 2;
+        while (i < t.length && !(t.charAt(i) === "*" && t.charAt(i + 1) === "/")) {
+          if (t.charAt(i) === "\n") { line++; col = 1; } else col++;
+          i++;
+        }
+        i += 2; col += 2;
+        continue;
+      }
+      if (ch === '"' || ch === "'") {
+        var quote = ch;
+        i++; col++;
+        while (i < t.length && t.charAt(i) !== quote) {
+          if (t.charAt(i) === "\\") { i += 2; col += 2; continue; }
+          if (t.charAt(i) === "\n") { line++; col = 1; } else col++;
+          i++;
+        }
+        i++; col++;
+        continue;
+      }
+      if (ch === "(" || ch === "{" || ch === "[") {
+        stack.push({ ch: ch, line: line, column: col });
+      } else if (ch === ")" || ch === "}" || ch === "]") {
+        var want = ch === ")" ? "(" : (ch === "}" ? "{" : "[");
+        if (stack.length && stack[stack.length - 1].ch === want) stack.pop();
+        else if (stack.length) return { ch: stack[stack.length - 1].ch, line: stack[stack.length - 1].line, column: stack[stack.length - 1].column, kind: "open" };
+        else return { ch: ch, line: line, column: col, kind: "close" };
+      }
+      i++; col++;
+    }
+    if (!stack.length) return null;
+    return { ch: stack[stack.length - 1].ch, line: stack[stack.length - 1].line, column: stack[stack.length - 1].column, kind: "open" };
+  }
+
+  function pairOf(ch) {
+    if (ch === "(") return ")";
+    if (ch === "{") return "}";
+    if (ch === "[") return "]";
+    if (ch === ")") return "(";
+    if (ch === "}") return "{";
+    return "[";
+  }
+
   function translate(rawMessage, source) {
     var text = String(rawMessage == null ? "" : rawMessage);
     var m = /^(\d+):(\d+)\s+/.exec(text);
@@ -40,22 +92,55 @@
       var pl = pm ? parseInt(pm[1], 10) : null;
       var pc = pm ? parseInt(pm[2], 10) : null;
       var expected = /Expected ([^\n]*) but ("[^"]*") found/.exec(text);
-      var detail = "解析器在第 " + (pl == null ? "?" : pl) + " 行读不通了。";
-      if (pl != null) {
-        var src = lineOf(source, pl).replace(/\t/g, "    ");
-        var trimmed = src.replace(/\s+$/, "");
-        var last = trimmed.slice(-1);
-        if (trimmed.length > 0 && last !== ";" && last !== "{" && last !== "}" && last !== ":" && last !== ")" && last !== ",") {
-          detail += "这一行结尾看起来少了分号。";
-        } else {
-          detail += "常见原因是这一行或上一行少了分号、括号没配对，或者符号写错了。";
+      var srcLines = String(source == null ? "" : source).split(/\r?\n/);
+
+      /* ① 最常见的一类：上一行结尾少了分号。编译器会把报错位置放到下一行，这里替学生找回去，
+            直接指到「真正缺分号的那一行 + 行尾那一列」。 */
+      if (pl != null && pl >= 2) {
+        var prev = String(srcLines[pl - 2] == null ? "" : srcLines[pl - 2]);
+        var prevTrim = prev.replace(/[ \t]+$/, "");
+        var prevLast = prevTrim.slice(-1);
+        var tails = ";{},:()\\=+-*/&|<>%!?\"'";
+        var prevCode = prevTrim.replace(/\s/g, "");
+        var looksLikeStatement = prevTrim.length > 0 && prevCode.indexOf("//") !== 0 && prevLast !== "" && tails.indexOf(prevLast) < 0;
+        if (looksLikeStatement) {
+          return {
+            kind: "parse", line: pl - 1, column: prevTrim.length + 1,
+            title: "这一行结尾少了分号 ;",
+            detail: "编译器在第 " + (pl - 1) + " 行末尾没看到分号，就把这一行和下一行连起来读了——所以它把报错位置指到了第 " + pl + " 行。",
+            hint: "在第 " + (pl - 1) + " 行末尾补一个英文分号 ; 就行（也就是「" + prevTrim.slice(-14) + "」的后面）。"
+          };
         }
-        if (expected) detail += " 解析到 " + (expected[2] || "该位置") + " 时卡住了。";
       }
+
+      /* ② 括号没配对：直接指到那个没关上的括号（或者那个多出来的括号） */
+      var br = findUnclosedBracket(source);
+      if (br) {
+        if (br.kind === "close") {
+          return {
+            kind: "parse", line: br.line, column: br.column,
+            title: "这个 " + br.ch + " 前面没有对应的 " + pairOf(br.ch),
+            detail: "括号必须成对出现：这个 " + br.ch + " 之前没有找到配对的 " + pairOf(br.ch) + "，编译器读到这里就断了。",
+            hint: "把这一行的 " + br.ch + " 删掉，或者在前面把 " + pairOf(br.ch) + " 补上。"
+          };
+        }
+        return {
+          kind: "parse", line: br.line, column: br.column,
+          title: "这个 " + br.ch + " 没有配对的 " + pairOf(br.ch),
+          detail: "括号必须成对出现：这里打开的 " + br.ch + " 一直到文件结束都没有关掉。",
+          hint: "在这个 " + br.ch + " 对应的位置补一个 " + pairOf(br.ch) + "；也可以往下找找，是不是漏写或写错了 " + pairOf(br.ch) + "。"
+        };
+      }
+
+      /* ③ 其他情况：至少说清「读到第几行第几列、卡在哪个字符上」 */
+      var found = expected && expected[2] ? String(expected[2]).replace(/^"|"$/g, "") : "";
+      var where = pl == null ? "" : "第 " + pl + " 行" + (pc ? "第 " + pc + " 列" : "");
+      var detail2 = pl == null ? "编译器读不下去了。" : "编译器读到 " + where + " 就读不下去了。";
+      detail2 += found ? "这里出现了不该出现的「" + found + "」。" : "这一行写得还不完整，或者符号写错了。";
       return {
-        kind: "parse", line: pl, column: pc, title: "语法错误：代码读不通",
-        detail: detail,
-        hint: "重点检查第 " + (pl == null ? "?" : pl) + " 行结尾的分号，以及 ( ) { } 有没有成对出现。"
+        kind: "parse", line: pl, column: pc, title: "这里写不通：" + (found ? "多了或少了「" + found + "」" : "语句没写完整"),
+        detail: detail2,
+        hint: "对照 " + (where || "这一行") + "，检查括号、引号是否成对，语句是否写完（分号别忘）。"
       };
     }
 

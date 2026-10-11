@@ -1393,7 +1393,7 @@
 
   /* 报错发生在「整段代码里根本没有函数」的情况下，补一句更直白的提示 */
   function refineFragmentFinding(f) {
-    if (!f || !/语法错误/.test(String(f.title))) return f;
+    if (!f || !f.fromEngine) return f;
     var masked = (analyzer && analyzer.maskCode) ? analyzer.maskCode(String($("code").value)) : "";
     if (!masked || /\w+\s*\([^)]*\)\s*\{/.test(masked)) return f;
     return {
@@ -1454,15 +1454,31 @@
 
     box.innerHTML = list.map(function (f, i) {
       var sev = SEV[f.severity];
+      var where = "第 " + f.line + " 行" + (f.column ? " · 第 " + f.column + " 列" : "");
+      var codeHtml = "";
+      if (f.snippet) {
+        /* 把出问题的那一列用一个 ^ 指出来（制表符按 4 个空格展开，保证对准） */
+        var lineText = String(f.snippet);
+        var expanded = "", caretAt = -1;
+        for (var k = 0; k < lineText.length; k++) {
+          if (k === (f.column || 0) - 1) caretAt = expanded.length;
+          var ch = lineText.charAt(k);
+          expanded += (ch === "\t" ? "    " : ch);
+        }
+        if (caretAt < 0) caretAt = expanded.length;
+        var pad = "";
+        for (var pi = 0; pi < caretAt; pi++) pad += " ";
+        codeHtml = '<pre class="f-code">' + esc(expanded) + "\n" + pad + "^</pre>";
+      }
       return '<div class="finding ' + sev.cls + '" data-line="' + f.line + '" data-idx="' + i + '">'
         + '<div class="f-head">'
         + '<span class="f-badge">' + sev.label + "</span>"
-        + '<span class="f-line">第 ' + f.line + " 行</span>"
+        + '<span class="f-line">' + where + "</span>"
         + '<span class="f-title">' + esc(f.title) + "</span>"
         + "</div>"
-        + (f.snippet ? '<pre class="f-code">' + esc(f.snippet) + "</pre>" : "")
-        + '<div class="f-detail">' + esc(f.detail) + "</div>"
+        + codeHtml
         + (f.fix ? '<div class="f-fix"><span>怎么改：</span>' + esc(f.fix) + "</div>" : "")
+        + (f.detail ? '<div class="f-detail">' + esc(f.detail) + "</div>" : "")
         + "</div>";
     }).join("");
 

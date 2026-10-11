@@ -881,20 +881,22 @@ store["code"].value = '#include <stdio.h>\nint main() {\n    int a = 1\n    prin
 store["code"].dispatch("input");
 flush();
 store["btn-check"].dispatch("click");
-check("缺分号：检查结果里有语法错误，并写出第几行", /语法错误/.test(store["findings"].innerHTML) && /第 4 行/.test(store["findings"].innerHTML));
+check("缺分号：直接指到真正缺分号的那一行（第 3 行 · 第 14 列）", /少了分号/.test(store["findings"].innerHTML) && /第 3 行/.test(store["findings"].innerHTML) && /第 14 列/.test(store["findings"].innerHTML), store["findings"].innerHTML.slice(0, 160));
+check("问题位置下面画了 ^ 指着那一列", /class="f-code">[\s\S]{0,200}?\^<\/pre>/.test(store["findings"].innerHTML), store["findings"].innerHTML.slice(0, 240));
+check("先说「怎么改」再解释为什么", store["findings"].innerHTML.indexOf("怎么改：") < store["findings"].innerHTML.indexOf("编译器在第 3 行末尾"));
 check("缺分号：错误排在前面、汇总是「错误」", /个错误/.test(store["summary"].innerHTML) && /summary bad/.test(store["summary"].className), store["summary"].innerHTML);
 
 store["code"].value = '#include <stdio.h>\nint main() {\n    if (1) {\n        printf("hi");\n    return 0;\n}';
 store["code"].dispatch("input");
 flush();
 store["btn-check"].dispatch("click");
-check("括号不配对也能查出来", /语法错误/.test(store["findings"].innerHTML));
+check("括号不配对：直接指出哪个括号没配上", /没有配对的/.test(store["findings"].innerHTML), store["findings"].innerHTML.slice(0, 160));
 
 store["code"].value = 'int a = 1;\nprintf("%d", a);\n';
 store["code"].dispatch("input");
 flush();
 store["btn-check"].dispatch("click");
-check("只贴一小段也报错，并提示语句要放进函数里", /语法错误/.test(store["findings"].innerHTML) && /没有看到函数定义/.test(store["findings"].innerHTML), store["findings"].innerHTML.slice(0, 140));
+check("只贴一小段也报错，并提示语句要放进函数里", /写不通|少了分号|没有配对|找不到/.test(store["findings"].innerHTML) && /没有看到函数定义/.test(store["findings"].innerHTML), store["findings"].innerHTML.slice(0, 160));
 
 store["code"].value = '#include <stdio.h>\nint main() {\n    int a = 1；\n    return 0;\n}';
 store["code"].dispatch("input");
