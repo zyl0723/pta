@@ -6,15 +6,15 @@
 <title>C 语言习题检查器 · 基础题代码自检</title>
 <meta name="description" content="粘贴 C 语言代码，立即指出常见错误的位置、原因和改法，并能真实运行代码、与题目期望输出逐行对比。全部在浏览器本地完成。">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src *; form-action 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'">
-    <link rel="icon" type="image/svg+xml" href="assets/img/logo-cat.svg?v=20261011a">
-    <link rel="stylesheet" href="assets/css/styles.css?v=20261011a">
-    <link rel="stylesheet" href="assets/vendor/xterm.css?v=20261011a">
+    <link rel="icon" type="image/svg+xml" href="assets/img/logo-cat.svg?v=20261011b">
+    <link rel="stylesheet" href="assets/css/styles.css?v=20261011b">
+    <link rel="stylesheet" href="assets/vendor/xterm.css?v=20261011b">
 </head>
 <body>
 
 <header class="topbar">
   <div class="brand">
-    <span class="logo"><img src="assets/img/logo-cat.svg?v=20261011a" alt="" width="30" height="30"></span>
+    <span class="logo"><img src="assets/img/logo-cat.svg?v=20261011b" alt="" width="30" height="30"></span>
     <div>
       <h1>C 语言习题检查器</h1>
       <p>指出错误在哪、为什么错、怎么改 · 代码不离开你的浏览器</p>
@@ -309,6 +309,14 @@
       <p class="ai-hint hidden" id="answer-parse-hint"></p>
 
       <div id="answer-parts" class="answer-parts">
+        <section id="ans-read-wrap" class="ans-part ans-part-0 hidden">
+          <div class="ans-head">
+            <h3>⓪ 我读到的题目<span class="ans-sub">先看这里：核对 AI 有没有把题读懂</span></h3>
+            <button id="btn-copy-read" class="btn tiny ans-btn" type="button">复制这段</button>
+          </div>
+          <pre id="part-read" class="ans-body"></pre>
+        </section>
+
         <section class="ans-part ans-part-1">
           <div class="ans-head">
             <h3>① 纯答案代码<span class="ans-sub">不带任何注释，可直接复制提交</span></h3>
@@ -519,13 +527,14 @@ printf("%d", a);</pre>
   </div>
 </div>
 
-<script src="assets/vendor/jscpp.js?v=20261011a"></script>
-<script src="assets/js/analyzer.js?v=20261011a"></script>
-<script src="assets/js/runner.js?v=20261011a"></script>
-<script src="assets/js/problems.js?v=20261011a"></script>
-<script src="assets/js/prompt.js?v=20261011a"></script>
-<script src="assets/js/aiclient.js?v=20261011a"></script>
-<script src="assets/js/app.js?v=20261011a"></script>
+<script src="assets/vendor/jscpp.js?v=20261011b"></script>
+<script src="assets/js/analyzer.js?v=20261011b"></script>
+<script src="assets/js/runner.js?v=20261011b"></script>
+<script src="assets/js/problems.js?v=20261011b"></script>
+<script src="assets/js/prompt.js?v=20261011b"></script>
+<script src="assets/js/aiclient.js?v=20261011b"></script>
+<script src="assets/js/app.js?v=20261011b"></script>
 </body>
 </html>
+
 

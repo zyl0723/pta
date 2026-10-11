@@ -1046,6 +1046,64 @@ sandbox.PTAAI.chat = keepChat2;
 
 check("模型调用默认温度 0（同题同答案的前提）", /temperature: typeof o.temperature === "number" \? o.temperature : 0/.test(readFileSync(path.join(root, "assets/js/aiclient.js"), "utf8")));
 
+console.log("=== 读题系统：先复述题目、样例当判据 ===");
+store["code-lang"].value = "c";
+store["code-lang"].dispatch("change");
+store["answer-level"].value = "easy";
+store["answer-level"].dispatch("change");
+store["answer-mode"].value = "learn";
+store["answer-mode"].dispatch("change");
+flush();
+check("答案面板里多了「⓪ 我读到的题目」栏", /id="ans-read-wrap"/.test(html) && /id="part-read"/.test(html) && /id="btn-copy-read"/.test(html));
+check("默认不显示（AI 没给 ⓪ 段时收起来）", store["ans-read-wrap"].classList.contains("hidden"));
+
+store["answer-body"].value = [
+  "===== 第 0 部分：我读到的题目（复述） =====",
+  "输入有多组 a b，读到输入结束；每组输出一行 a+b。",
+  "===== 第 1 部分：纯答案代码（不加注释） =====",
+  "#include <stdio.h>",
+  "===== 第 2 部分：带注释的代码（注释单独占一行） =====",
+  "#include <stdio.h>",
+  "// 读入并输出",
+  "===== 第 3 部分：容易出错的地方 =====",
+  "1. 忘了多组输入。"
+].join("\n");
+store["answer-body"].dispatch("input");
+check("⓪ 段被单独解析出来", /输入有多组/.test(store["part-read"].textContent) && /读到输入结束/.test(store["part-read"].textContent), store["part-read"].textContent.slice(0, 40));
+check("有 ⓪ 段时这一栏就显示出来", !store["ans-read-wrap"].classList.contains("hidden"));
+check("① ② ③ 三段照旧", /#include/.test(store["part-plain"].textContent) && /读入并输出/.test(store["part-annotated"].textContent) && /忘了多组输入/.test(store["part-pitfalls"].textContent));
+store["answer-body"].value = "===== 第 1 部分：纯答案代码（不加注释） =====\nint main(){ return 0; }";
+store["answer-body"].dispatch("input");
+check("AI 没给 ⓪ 段时这一栏自动收起", store["ans-read-wrap"].classList.contains("hidden"));
+
+/* 提示词里要复述题目、把样例当判据、强调「多组 vs 一组」 */
+store["problem-text"].value = "7-2 拿糖\n每次输入两个整数 a 和 b，输入有多组，读到输入结束，每组输出一行总数。";
+store["stdin"].value = "1 1\n2 3\n";
+store["expected"].value = "2\n5\n";
+store["btn-answer"].dispatch("click");
+p = store["prompt-out"].value;
+check("提示词要求先复述题目（第 0 部分）", /第 0 部分：我读到的题目/.test(p) && /读取到输入结束|读到输入结束/.test(p));
+check("提示词把用户填的样例当成判据", /我按题目填的样例（判据）/.test(p) && /输入：[\s\S]{0,20}1 1/.test(p) && /期望输出：[\s\S]{0,20}2/.test(p));
+check("提示词强调「多组输入」不能只处理一组", /输入有多组.*就必须能一直处理到输入结束|只能处理一组就是错的/.test(p));
+check("提示词要求用样例核对一遍", /样例输入进去，必须得到样例输出/.test(p));
+const keepChat3 = sandbox.PTAAI.chat;
+sandbox.PTAAI.chat = function (opts) { opts.onDelta("d", "===== 第 1 部分：纯答案代码（不加注释） =====\nint main(){ return 0; }"); opts.onDone(); return { cancel: function () {} }; };
+store["btn-ai-run"].dispatch("click");
+check("答案框上会标出本次用的是哪道题", /本次题目/.test(store["answer-note"].textContent), store["answer-note"].textContent);
+sandbox.PTAAI.chat = keepChat3;
+
+console.log("=== 版本自动更新 ===");
+const versionJson = JSON.parse(readFileSync(path.join(root, "version.json"), "utf8"));
+check("仓库里有 version.json 并且带版本号", typeof versionJson.v === "string" && versionJson.v.length >= 6, JSON.stringify(versionJson.v));
+check("页面里的资源版本号和 version.json 一致", html.indexOf("?v=" + versionJson.v) >= 0 && boardPage.indexOf("?v=" + versionJson.v) >= 0);
+const appSrc = readFileSync(path.join(root, "assets/js/app.js"), "utf8");
+const boardSrc = readFileSync(path.join(root, "assets/js/board.js"), "utf8");
+check("主页面里写死了同一个版本号", new RegExp('BUILD_V = "' + versionJson.v + '"').test(appSrc));
+check("留言板页面也是", new RegExp('BUILD_V = "' + versionJson.v + '"').test(boardSrc));
+check("进来时会去读 version.json 并比对版本", /fetch\("version\.json\?t="/.test(appSrc) && /info\.v === BUILD_V/.test(appSrc));
+check("发现是新版本就自动刷新（只刷一次，防止来回刷）", /location\.replace\(base \+ "\?_v="/.test(appSrc) && /sessionStorage\.getItem\(UPDATE_KEY\) === v/.test(appSrc));
+check("切回标签页时也会再确认一次", /visibilitychange/.test(appSrc) && /visibilitychange/.test(boardSrc));
+
 console.log("\n集成测试：" + ok + " 通过 / " + (ok + bad) + " 项");
 if (bad) process.exitCode = 1;
 

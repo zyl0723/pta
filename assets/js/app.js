@@ -13,6 +13,9 @@
 
   var HINT_WEB = "下面这段就是发给 AI 的内容。想直接在这里出结果就点「在本站生成」；想用你自己的 AI 网页，就点「复制提示词」再粘贴过去。";
 
+  /* 本文件对应的版本号：必须和仓库根目录 version.json 里的 v 一致（发版时一起改） */
+  var BUILD_V = "20261011b";
+
   var SEV = {
     error: { label: "错误", cls: "sev-error", mark: "✖", hint: "这样写编译器一定会报错" },
     warning: { label: "很可能有问题", cls: "sev-warn", mark: "!", hint: "代码能编译，但行为多半不是你要的" },
@@ -80,6 +83,40 @@
     loadAiConfig();
     refreshGutter();
     analyzeNow();
+    initAutoUpdate(); /* 每次进来都确认一下是不是最新版 */
+  }
+
+  /* ---------- 自动更新：进来时（以及切回标签页时）对一下版本号，不是最新就自动刷新 ---------- */
+  var UPDATE_KEY = "pta-reloaded-for";
+
+  function reloadWithVersion(v) {
+    try {
+      if (window.sessionStorage && window.sessionStorage.getItem(UPDATE_KEY) === v) return; /* 已经为这个版本刷过一次，别来回刷 */
+      if (window.sessionStorage) window.sessionStorage.setItem(UPDATE_KEY, v);
+    } catch (err) { /* 存不了也无所谓 */ }
+    var base = String(location.pathname || "/");
+    location.replace(base + "?_v=" + encodeURIComponent(v)); /* 带个新参数，顺手绕开浏览器对旧 HTML 的缓存 */
+  }
+
+  function checkForUpdate() {
+    if (typeof fetch !== "function" || typeof location === "undefined") return;
+    fetch("version.json?t=" + Date.now(), { cache: "no-store" })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (info) {
+        if (!info || !info.v || info.v === BUILD_V) return;
+        reloadWithVersion(info.v);
+      })
+      .catch(function () { /* 拿不到版本信息就算了，不影响使用 */ });
+  }
+
+  function initAutoUpdate() {
+    checkForUpdate();
+    if (typeof document.addEventListener === "function") {
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "visible") checkForUpdate();
+      });
+    }
+    if (typeof setInterval === "function") setInterval(checkForUpdate, 10 * 60 * 1000);
   }
 
   function bindEvents() {
@@ -182,6 +219,7 @@
     $("btn-dev-send").addEventListener("click", addDevInput);
     $("dev-input").addEventListener("keydown", onDevInputKey);
     $("btn-copy-part1").addEventListener("click", function () { copyResult($("part-plain"), "第 ① 段（纯答案代码）", true); });
+    $("btn-copy-read").addEventListener("click", function () { copyResult($("part-read"), "第 ⓪ 段（读题复述）", true); });
     $("btn-copy-part2").addEventListener("click", function () { copyResult($("part-annotated"), "第 ② 段（带注释的代码）", true); });
     $("btn-copy-part3").addEventListener("click", function () { copyResult($("part-pitfalls"), "第 ③ 段（容易出错的地方）", true); });
     $("answer-body").addEventListener("input", function () {
@@ -370,8 +408,17 @@
   var ANSWER_CACHE_MAX = 6;
 
   function answerCacheKey() {
-    return [curLang(), curLevel(), curMode(),
-      String($("problem-text").value == null ? "" : $("problem-text").value).replace(/\s+/g, " ").trim()].join("|");
+    /* 题目 + 样例 + 语言 + 难度 + 模式 全都一样，才复用上次那份答案；
+       题目或样例一变（比如换成另一道题），就必须重新生成 */
+    function norm(v) { return String(v == null ? "" : v).replace(/\s+/g, " ").trim(); }
+    return [curLang(), curLevel(), curMode(), norm($("problem-text").value), norm($("stdin").value), norm($("expected").value)].join("|");
+  }
+
+  /* 答案框上标一下「本次用的是哪道题」，一眼就能看出发错题没有 */
+  function problemExcerpt() {
+    var t = String($("problem-text").value == null ? "" : $("problem-text").value).replace(/\s+/g, " ").trim();
+    if (!t) return "（题目框是空的）";
+    return t.length > 18 ? t.slice(0, 18) + "…" : t;
   }
 
   function readAnswerCache() {
@@ -518,7 +565,9 @@
       findings: state.findings,
       lang: curLang(),
       level: curLevel(),
-      mode: curMode()
+      mode: curMode(),
+      sampleIn: $("stdin").value,
+      sampleOut: $("expected").value
     };
     var text;
     if (kind === "answer") {
@@ -583,13 +632,14 @@
   }
 
   /* ---------- 「答案与解析」三段式：把 AI 的回答按 ① ② ③ 拆开显示 ---------- */
-  var PART_RE = /第\s*([123１２３一二三])\s*部分/;
+  var PART_RE = /第\s*([0123０１２３零一二三])\s*部分/;
 
   function partNumber(ch) {
+    if (ch === "0" || ch === "０" || ch === "零") return 0;
     if (ch === "1" || ch === "１" || ch === "一") return 1;
     if (ch === "2" || ch === "２" || ch === "二") return 2;
     if (ch === "3" || ch === "３" || ch === "三") return 3;
-    return 0;
+    return -1;
   }
 
   function stripFence(s) {
@@ -601,7 +651,7 @@
 
   /* 按 AI 输出的三段标题切分；切不出来就返回 ok:false，交给回退逻辑 */
   function splitAnswer(text) {
-    var out = { ok: false, p1: "", p2: "", p3: "" };
+    var out = { ok: false, p0: "", p1: "", p2: "", p3: "" };
     var t = String(text == null ? "" : text).replace(/\r\n/g, "\n");
     if (!t.trim()) return out;
     var lines = t.split("\n");
@@ -610,20 +660,22 @@
       var m = PART_RE.exec(lines[i]);
       if (!m || lines[i].trim().length > 60) continue;
       var n = partNumber(m[1]);
-      if (!n) continue;
+      if (n < 0) continue;
       var dup = false;
       for (var k = 0; k < marks.length; k++) if (marks[k].part === n) dup = true;
       if (!dup) marks.push({ part: n, i: i });
     }
     if (!marks.length) return out;
-    out.ok = true;
+    var hasBody = false;
     for (var j = 0; j < marks.length; j++) {
       var end = j + 1 < marks.length ? marks[j + 1].i : lines.length;
       var body = stripFence(lines.slice(marks[j].i + 1, end).join("\n"));
-      if (marks[j].part === 1) out.p1 = body;
+      if (marks[j].part === 0) out.p0 = body;
+      else if (marks[j].part === 1) { out.p1 = body; hasBody = true; }
       else if (marks[j].part === 2) out.p2 = body;
       else out.p3 = body;
     }
+    out.ok = hasBody; /* 只有 0 段（读题复述）不算分好段 */
     return out;
   }
 
@@ -633,10 +685,13 @@
     $("part-plain").textContent = r.p1;
     $("part-annotated").textContent = r.p2;
     $("part-pitfalls").textContent = r.p3;
+    if ($("part-read")) $("part-read").textContent = r.p0;
+    var readWrap = $("ans-read-wrap");
+    if (readWrap) readWrap.classList[r.p0 ? "remove" : "add"]("hidden");
     var hint = $("answer-parse-hint");
     if (!hint) return;
     if (!r.ok && String(text || "").trim()) {
-      hint.textContent = "这次 AI 没有按 ① ② ③ 三段输出，所以三段没分开；完整内容在下面「原始回答」里，展开就能看、也能直接复制。";
+      hint.textContent = "这次 AI 没有按 ⓪ ① ② ③ 的格式输出，所以几段没分开；完整内容在下面「原始回答」里，展开就能看、也能直接复制。";
       hint.classList.remove("hidden");
       if ($("answer-raw-wrap")) $("answer-raw-wrap").open = true;
     } else {
@@ -811,7 +866,7 @@
     if (!document.head || typeof document.head.appendChild !== "function") { termState = "failed"; return; }
     termState = "loading";
     var s = document.createElement("script");
-    s.src = "assets/vendor/xterm.js?v=20261011a";
+    s.src = "assets/vendor/xterm.js?v=20261011b";
     s.onload = function () { termState = "idle"; initTerminal(); };
     s.onerror = function () { termState = "failed"; };
     document.head.appendChild(s);
@@ -1009,7 +1064,9 @@
       findings: state.findings,
       lang: curLang(),
       level: curLevel(),
-      mode: curMode()
+      mode: curMode(),
+      sampleIn: $("stdin").value,
+      sampleOut: $("expected").value
     });
     $("prompt-out").value = text;
     state.aiTarget = "recheck";
@@ -1195,7 +1252,7 @@
         var box = outputFor("answer");
         box.panel.classList.remove("hidden");
         box.body.value = cached.text;
-        setOutNote("answer-note", "用的是上次那份答案（题目 / 语言 / 难度 / 模式都没变）");
+        setOutNote("answer-note", "用的是上次那份答案（题目 / 样例 / 语言 / 难度 / 模式都没变）· 题目：「" + problemExcerpt() + "」");
         showAnswerMode("parts");
         renderAnswerParts(cached.text);
         setAiStatus("这道题之前生成过：直接给你上次那份答案，没有再消耗额度。想重新问一次就点「重新生成」。");
@@ -1235,7 +1292,10 @@
       },
       onDone: function () {
         finishAiRun();
-        if (target.note) setOutNote(target.note, "已生成（模型：" + c.model + "）");
+        if (target.note) {
+          setOutNote(target.note, "已生成（模型：" + c.model + "）"
+            + (kind === "answer" ? "· 本次题目：「" + problemExcerpt() + "」" : ""));
+        }
         if (target.parts) renderAnswerParts(target.body.value);
         if (cacheKey) answerCacheSet(cacheKey, target.body.value, c.model);
         if (kind === "recheck") {
@@ -1644,4 +1704,5 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();
+
 

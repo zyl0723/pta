@@ -20,6 +20,10 @@
 (function () {
   "use strict";
 
+  /* 本文件对应的版本号：必须和仓库根目录 version.json 里的 v 一致（发版时一起改） */
+  var BUILD_V = "20261011b";
+  var UPDATE_KEY = "pta-reloaded-for";
+
   var CONFIG = {
     repo: "zyl0723/pta",
     repoId: "R_kgDOVCSHPg", /* 仓库 ID（用 GitHub API 查到的，不用手填） */
@@ -81,11 +85,33 @@
   function init() {
     var host = $("board");
     if (!host) return;
+    checkForUpdate();
+    if (typeof document.addEventListener === "function") {
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "visible") checkForUpdate();
+      });
+    }
     if (!CONFIG.repoId || !CONFIG.categoryId) {
       renderSetup(host);
       return;
     }
     renderGiscus(host);
+  }
+
+  /* 自动更新：版本号变了就刷新一次（只刷一次，避免来回刷） */
+  function checkForUpdate() {
+    if (typeof fetch !== "function" || typeof location === "undefined") return;
+    fetch("version.json?t=" + Date.now(), { cache: "no-store" })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (info) {
+        if (!info || !info.v || info.v === BUILD_V) return;
+        try {
+          if (window.sessionStorage && window.sessionStorage.getItem(UPDATE_KEY) === info.v) return;
+          if (window.sessionStorage) window.sessionStorage.setItem(UPDATE_KEY, info.v);
+        } catch (err) { /* 存不了也无所谓 */ }
+        location.replace(String(location.pathname || "/") + "?_v=" + encodeURIComponent(info.v));
+      })
+      .catch(function () { /* 拿不到就算了 */ });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

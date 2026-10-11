@@ -334,6 +334,8 @@ pre.stdout {
 /* ---------- 「答案与解析」三段式显示（淡粉 → 深粉，逐段加深） ---------- */
 .answer-parts { display: flex; flex-direction: column; gap: 16px; margin-top: 12px; }
 .ans-part { border-radius: 10px; border: 1px solid #f0dbe5; padding: 10px 12px 12px; }
+.ans-part-0 { background: #fffafc; border-color: #f3e2ea; }
+.ans-part-0 .ans-btn { background: #fdf1f7; border-color: #ecd6e2; color: #6d2f49; }
 .ans-part-1 { background: #fdf6fa; border-color: #f5e3ec; }
 .ans-part-2 { background: #f8e6f0; border-color: #edd2e1; }
 .ans-part-3 { background: #f2d3e2; border-color: #e4bdd1; }
