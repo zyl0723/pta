@@ -48,6 +48,12 @@
               <option value="hard">困难</option>
             </select>
           </label>
+          <label class="pick"><span class="pick-label">模式</span>
+            <select id="answer-mode" class="select select-tiny" title="学习＝照课本标准写法、够过题就行；工作＝严谨健壮，能直接敲进项目里">
+              <option value="learn" selected>学习</option>
+              <option value="work">工作</option>
+            </select>
+          </label>
           <button id="btn-hints" class="btn tiny" type="button" aria-pressed="false" title="网站使用提示：点一下把每个模块的说明文字收起来，再点一下显示回来">网站使用提示</button>
           <button id="btn-sample" class="btn tiny">载入示例</button>
           <button id="btn-clear" class="btn tiny">清空</button>
@@ -61,7 +67,7 @@
       </div>
 
       <div class="field-note mini" id="lang-note">
-        <b>右上角的「语言」和「难度」决定这一个页面怎么干活。</b>检查、答案与解析、练习、翻译、二次检查，全都按你选的语言和难度来。<b>语言选 C</b> 时本机自带检查规则和解释器，能直接检查、能真跑；选 <b>Python / C++ / Java</b> 时本机没有对应的解释器，只能把题目和你的代码交给你自己的 AI 检查（网页拼好的提示词里会写明语言和难度）。<span id="lang-status" class="lang-status">当前：C 语言 · 简单答案</span>
+        <b>右上角的「语言 / 难度 / 模式」决定这一个页面怎么干活。</b>检查、答案与解析、提问、练习、翻译、二次检查，全都按这三个选择来。<b>语言选 C</b> 时本机自带检查规则和解释器，能直接检查、能真跑；选 <b>Python / C++ / Java</b> 时本机没有对应的解释器，只能把题目和你的代码交给你自己的 AI 检查。<b>难度</b>决定讲多深（简单＝新手能懂），<b>模式</b>决定写法：<b>学习</b>＝照课本标准写法、够过题就行，<b>工作</b>＝严谨健壮、能直接敲进项目里。同一道题只要语言/难度/模式不变，答案会直接复用上次那份，不会换来换去。<span id="lang-status" class="lang-status">当前：C 语言 · 简单答案 · 学习模式</span>
       </div>
 
       <div class="editor" id="editor">
@@ -295,6 +301,7 @@
         <div class="panel-actions">
           <span class="dim" id="answer-note">还没有生成。</span>
           <button id="btn-copy-answer" class="btn tiny">复制原始回答</button>
+          <button id="btn-answer-regen" class="btn tiny" type="button" title="忽略上次那份答案，重新问一次 AI（会重新消耗你自己的额度）">重新生成</button>
           <button id="btn-answer-full" class="btn tiny pink" type="button">放大到全屏</button>
         </div>
       </div>

@@ -9,7 +9,7 @@
   var runner = window.PTARunner;
   var problems = window.PTAProblems || [];
 
-  var state = { findings: [], timer: null, currentProblem: null, lastRun: null, aiRun: null, aiTarget: "answer", aiCheckMode: false, aiCheckStale: false, runForced: false };
+  var state = { findings: [], timer: null, currentProblem: null, lastRun: null, aiRun: null, aiTarget: "answer", aiCheckMode: false, aiCheckStale: false, runForced: false, answerForce: false };
 
   var HINT_WEB = "下面这段就是发给 AI 的内容。想直接在这里出结果就点「在本站生成」；想用你自己的 AI 网页，就点「复制提示词」再粘贴过去。";
 
@@ -59,8 +59,10 @@
 
   var LANG_LABEL = { c: "C 语言", python: "Python", cpp: "C++", java: "Java" };
   var LEVEL_LABEL = { easy: "简单", normal: "中等", hard: "困难" };
+  var MODE_LABEL = { learn: "学习", work: "工作" };
   var LANG_KEY = "pta-code-lang";
   var LEVEL_KEY = "pta-answer-level";
+  var MODE_KEY = "pta-answer-mode";
 
   function init() {
     loadLangAndLevel();
@@ -138,6 +140,8 @@
     });
     $("code-lang").addEventListener("change", onLangChange);
     $("answer-level").addEventListener("change", onLevelChange);
+    $("answer-mode").addEventListener("change", onModeChange);
+    $("btn-answer-regen").addEventListener("click", regenAnswer);
     $("btn-hints").addEventListener("click", toggleHints);
     $("problem-select").addEventListener("change", onProblemChange);
     $("btn-fill-reference").addEventListener("click", fillReference);
@@ -283,13 +287,19 @@
     var v = $("answer-level") ? $("answer-level").value : "";
     return LEVEL_LABEL[v] ? v : "easy";
   }
+  function curMode() {
+    var v = $("answer-mode") ? $("answer-mode").value : "";
+    return MODE_LABEL[v] ? v : "learn";
+  }
   function starterFor(lang) { return STARTERS[lang] || STARTERS.c; }
 
   function loadLangAndLevel() {
     var lang = lsGet(LANG_KEY);
     var level = lsGet(LEVEL_KEY);
+    var mode = lsGet(MODE_KEY);
     if (lang && STARTERS[lang] && $("code-lang")) $("code-lang").value = lang;
     if (level && LEVEL_LABEL[level] && $("answer-level")) $("answer-level").value = level;
+    if (mode && MODE_LABEL[mode] && $("answer-mode")) $("answer-mode").value = mode;
   }
 
   /* C 语言：本机的检查规则和解释器都能用。其他语言：本机没有对应的解释器，
@@ -297,6 +307,7 @@
   function applyLangAndLevel() {
     var lang = curLang();
     var level = curLevel();
+    var mode = curMode();
     var isC = lang === "c";
     var noLocal = "本机只装了 C 语言的检查规则和解释器：换回 C 语言才能用，或者用右边「答案与解析」交给你自己的 AI。";
     ["btn-check", "btn-run", "btn-check-run", "btn-fill-reference", "btn-dev-check", "btn-dev-run"].forEach(function (id) {
@@ -318,6 +329,7 @@
     var status = $("lang-status");
     if (status) {
       status.textContent = "当前：" + (LANG_LABEL[lang] || lang) + " · " + (LEVEL_LABEL[level] || level) + "答案"
+        + " · " + (MODE_LABEL[mode] || mode) + "模式"
         + (isC ? "" : "（本机不跑代码，交给你的 AI）");
     }
     var box = $("code");
@@ -346,6 +358,62 @@
   function onLevelChange() {
     lsSet(LEVEL_KEY, curLevel());
     applyLangAndLevel();
+  }
+
+  function onModeChange() {
+    lsSet(MODE_KEY, curMode());
+    applyLangAndLevel();
+  }
+
+  /* ---------- 「答案与解析」的复用：同一道题 + 同样语言/难度/模式，答案要和上次一样 ---------- */
+  var ANSWER_CACHE_KEY = "pta-answer-cache";
+  var ANSWER_CACHE_MAX = 6;
+
+  function answerCacheKey() {
+    return [curLang(), curLevel(), curMode(),
+      String($("problem-text").value == null ? "" : $("problem-text").value).replace(/\s+/g, " ").trim()].join("|");
+  }
+
+  function readAnswerCache() {
+    try {
+      var list = JSON.parse(lsGet(ANSWER_CACHE_KEY) || "[]");
+      return Array.isArray(list) ? list : [];
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function writeAnswerCache(list) {
+    lsSet(ANSWER_CACHE_KEY, JSON.stringify(list.slice(-ANSWER_CACHE_MAX)));
+  }
+
+  function answerCacheGet(key) {
+    var list = readAnswerCache();
+    for (var i = 0; i < list.length; i++) if (list[i] && list[i].key === key) return list[i];
+    return null;
+  }
+
+  function answerCacheSet(key, text, model) {
+    var list = readAnswerCache().filter(function (e) { return e && e.key !== key; });
+    list.push({ key: key, text: String(text || ""), model: String(model || ""), at: Date.now() });
+    writeAnswerCache(list);
+  }
+
+  function answerCacheDrop(key) {
+    writeAnswerCache(readAnswerCache().filter(function (e) { return e && e.key !== key; }));
+  }
+
+  /* 「重新生成」：忽略上次那份答案，重新问一次 AI（会重新消耗你自己的额度） */
+  function regenAnswer() {
+    var key = answerCacheKey();
+    answerCacheDrop(key);
+    state.answerForce = true;
+    showPrompt("answer", { silent: true });
+    if (!hasAiConfig()) {
+      setAiStatus("想重新生成，得先在左边「API」模块填好地址、密钥和模型；也可以点「复制提示词」拿去你自己的 AI 网站问。");
+      return;
+    }
+    runAi();
   }
 
   /* ---------- 代码编辑的上一步 / 下一步：手误也能退回去 ---------- */
@@ -433,7 +501,7 @@
     $("ai-status").textContent = text;
   }
 
-  function showPrompt(kind) {
+  function showPrompt(kind, opts) {
     if (!window.PTAPrompt) return;
     if (kind === "translate") {
       if (!needFeedback()) return;
@@ -449,7 +517,8 @@
       feedback: $("pta-feedback").value,
       findings: state.findings,
       lang: curLang(),
-      level: curLevel()
+      level: curLevel(),
+      mode: curMode()
     };
     var text;
     if (kind === "answer") {
@@ -475,20 +544,22 @@
     } else {
       $("answer-title").textContent = kind === "translate"
         ? "报错翻译（" + LANG_LABEL[curLang()] + "）"
-        : "答案与解析（" + LANG_LABEL[curLang()] + " · " + LEVEL_LABEL[curLevel()] + "）";
+        : "答案与解析（" + LANG_LABEL[curLang()] + " · " + LEVEL_LABEL[curLevel()] + " · " + MODE_LABEL[curMode()] + "）";
       setOutNote("answer-note", "还没有生成。");
       $("panel-answer").classList.remove("hidden");
       showAnswerMode(kind === "translate" ? "raw" : "parts");
     }
     $("panel-ai").classList.remove("hidden");
     $("ai-hint").textContent = HINT_WEB;
-    copyText(text, function (ok) {
-      setAiStatus(ok
-        ? "提示词已复制。想在这里直接出结果就点「在本站生成」；想去网站上问，直接粘过去就行。"
-        : "复制失败：请手动全选下面的提示词复制。");
-    });
+    if (!(opts && opts.silent)) {
+      copyText(text, function (ok) {
+        setAiStatus(ok
+          ? "提示词已复制。想在这里直接出结果就点「在本站生成」；想去网站上问，直接粘过去就行。"
+          : "复制失败：请手动全选下面的提示词复制。");
+      });
+    }
     updateRunNote();
-    $("panel-ai").scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!(opts && opts.silent)) $("panel-ai").scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   /* ---------- 生成结果的展示区：答案在右栏、练习题在左栏、二次检查覆盖检查结果 ---------- */
@@ -937,7 +1008,8 @@
       answer: $("answer-body").value,
       findings: state.findings,
       lang: curLang(),
-      level: curLevel()
+      level: curLevel(),
+      mode: curMode()
     });
     $("prompt-out").value = text;
     state.aiTarget = "recheck";
@@ -1114,6 +1186,23 @@
 
     var kind = state.aiTarget || "answer";
     var label = aiKindLabel(kind);
+
+    /* 同一道题 + 同样语言/难度/模式：直接复用上次那份答案，不重复问 AI（省额度，答案也不会变） */
+    var cacheKey = kind === "answer" ? answerCacheKey() : "";
+    if (cacheKey && !state.answerForce) {
+      var cached = answerCacheGet(cacheKey);
+      if (cached && cached.text) {
+        var box = outputFor("answer");
+        box.panel.classList.remove("hidden");
+        box.body.value = cached.text;
+        setOutNote("answer-note", "用的是上次那份答案（题目 / 语言 / 难度 / 模式都没变）");
+        showAnswerMode("parts");
+        renderAnswerParts(cached.text);
+        setAiStatus("这道题之前生成过：直接给你上次那份答案，没有再消耗额度。想重新问一次就点「重新生成」。");
+        return;
+      }
+    }
+    state.answerForce = false;
     var target;
     if (kind === "recheck") {
       beginRecheck();
@@ -1148,6 +1237,7 @@
         finishAiRun();
         if (target.note) setOutNote(target.note, "已生成（模型：" + c.model + "）");
         if (target.parts) renderAnswerParts(target.body.value);
+        if (cacheKey) answerCacheSet(cacheKey, target.body.value, c.model);
         if (kind === "recheck") {
           $("summary").className = "summary note";
           $("summary").innerHTML = "以下是用你生成的答案对照后，AI 给出的重新检查结果（模型：" + esc(c.model) + "）。";

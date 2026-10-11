@@ -313,7 +313,7 @@ sandbox.PTAAI.chat = function (opts) {
 store["problem-text"].value = "7-1 两数求和\n输入 a 和 b，输出 a + b。";
 store["answer-body"].value = "";
 store["btn-answer"].dispatch("click");
-check("点「生成答案与解析」后答案框标题带上语言与难度", store["answer-title"].textContent === "答案与解析（C 语言 · 简单）", store["answer-title"].textContent);
+check("点「生成答案与解析」后答案框标题带上语言、难度、模式", store["answer-title"].textContent === "答案与解析（C 语言 · 简单 · 学习）", store["answer-title"].textContent);
 store["btn-ai-run"].dispatch("click");
 check("AI 的答案写进右侧单独的答案框", store["answer-body"].value.indexOf("AI 写出来的正文内容") >= 0 && !store["panel-answer"].classList.contains("hidden"));
 
@@ -571,7 +571,7 @@ store["btn-answer"].dispatch("click");
 check("提示词写明语言：Python 3 与它的输入输出写法", /语言：Python 3/.test(store["prompt-out"].value) && /map\(int, input\(\)\.split\(\)\)/.test(store["prompt-out"].value));
 check("提示词把语言与难度标成最高优先级", /最高优先级/.test(store["prompt-out"].value) && /全部必须用 Python 3 写/.test(store["prompt-out"].value));
 check("提示词带上 Python 常见坑", /忘了转 int|setrecursionlimit/.test(store["prompt-out"].value));
-check("答案框标题也写出语言与难度", store["answer-title"].textContent === "答案与解析（Python · 简单）", store["answer-title"].textContent);
+check("答案框标题也写出语言、难度、模式", store["answer-title"].textContent === "答案与解析（Python · 简单 · 学习）", store["answer-title"].textContent);
 store["btn-practice"].dispatch("click");
 check("练习也按选的语言出题", /语言：Python 3/.test(store["prompt-out"].value) && /参考答案一律用 Python 3 写/.test(store["prompt-out"].value));
 
@@ -979,6 +979,70 @@ check("主页面所有本地资源都带 ?v=", localUrls.length >= 8 && localUrl
 const boardUrls = [...boardPage.matchAll(/(?:src|href)="(assets\/[^"]*)"/g)].map((m) => m[1]);
 check("留言板页面的本地资源也带 ?v=", boardUrls.length >= 3 && boardUrls.every((u) => /\?v=/.test(u)), boardUrls.filter((u) => !/\?v=/.test(u)).join(","));
 check("按需加载的 xterm 也带版本号", /assets\/vendor\/xterm\.js\?v=/.test(readFileSync(path.join(root, "assets/js/app.js"), "utf8")));
+
+console.log("=== 模式（学习 / 工作）+ 解释要讲到每个符号 + 同题答案稳定 ===");
+store["code-lang"].value = "c";
+store["code-lang"].dispatch("change");
+store["answer-level"].value = "easy";
+store["answer-level"].dispatch("change");
+store["answer-mode"].value = "learn";
+store["answer-mode"].dispatch("change");
+flush();
+check("「你的代码」右上角多了模式下拉框（学习 / 工作）", /id="answer-mode"/.test(html) && /<option value="learn" selected>学习<\/option>/.test(html) && /<option value="work">工作<\/option>/.test(html));
+check("状态行同时写出语言 / 难度 / 模式", /C 语言 · 简单答案 · 学习模式/.test(store["lang-status"].textContent), store["lang-status"].textContent);
+
+store["problem-text"].value = "7-1 拿糖\n每次输入两个整数 a 和 b，代表左手和右手拿的糖数，输入可能有多组，输出每组的总数。";
+store["code"].value = '#include <stdio.h>\nint main() {\n    int a, b;\n    while (scanf("%d %d", &a, &b) == 2) {\n        printf("%d\\n", a + b);\n    }\n    return 0;\n}';
+store["code"].dispatch("input");
+flush();
+store["btn-answer"].dispatch("click");
+let p = store["prompt-out"].value;
+check("提示词里写明「模式：学习」", /写法模式：学习/.test(p));
+check("学习模式＝照课本标准写法、不要多套循环", /优先用课本上的标准写法/.test(p) && /不要额外再套一层循环/.test(p));
+check("学习模式＝只写题目要的，不做多余校验", /不用判断输入失败/.test(p));
+check("提示词要求把出现的每个符号都解释", /占位符（例如 %d、%lf、%s、%lld）/.test(p) && /& 是干什么用的/.test(p) && /== 2 里的 2 是什么意思/.test(p));
+check("提示词要求最后附「符号小词典」", /符号小词典/.test(p) && /一个都不要漏/.test(p));
+check("提示词要求同一道题答案稳定", /答案必须稳定/.test(p));
+
+store["answer-mode"].value = "work";
+store["answer-mode"].dispatch("change");
+store["btn-answer"].dispatch("click");
+p = store["prompt-out"].value;
+check("切到「工作」模式后写法规矩跟着变", /写法模式：工作/.test(p) && /检查每一步是否成功/.test(p) && /把边界处理掉/.test(p));
+check("模式选择记在本机", lsData.get("pta-answer-mode") === "work");
+store["answer-mode"].value = "learn";
+store["answer-mode"].dispatch("change");
+
+/* 同题 + 同语言/难度/模式 → 第二次直接复用上次那份，不再重复问 AI */
+store["ai-preset"].value = "deepseek";
+store["ai-preset"].dispatch("change");
+store["ai-key"].value = "sk-test-1234567890";
+store["chk-ai-remember"].checked = true;
+store["btn-ai-save"].dispatch("click");
+let chatCalls = 0;
+const keepChat2 = sandbox.PTAAI.chat;
+sandbox.PTAAI.chat = function (opts) { chatCalls++; opts.onDelta("d", "第一版答案正文"); opts.onDone(); return { cancel: function () {} }; };
+store["answer-body"].value = "";
+store["btn-answer"].dispatch("click");
+store["btn-ai-run"].dispatch("click");
+check("第一次生成会真的问 AI", chatCalls === 1 && /第一版答案正文/.test(store["answer-body"].value), "calls=" + chatCalls);
+store["btn-ai-run"].dispatch("click");
+check("同样的题目/语言/难度/模式：第二次不再问 AI，直接给上次那份", chatCalls === 1 && /第一版答案正文/.test(store["answer-body"].value), "calls=" + chatCalls);
+check("界面说明这是复用上次那份", /上次那份答案/.test(store["answer-note"].textContent), store["answer-note"].textContent);
+
+store["answer-level"].value = "hard";
+store["answer-level"].dispatch("change");
+store["btn-answer"].dispatch("click");
+store["btn-ai-run"].dispatch("click");
+check("换了难度就会重新问 AI", chatCalls === 2, "calls=" + chatCalls);
+store["answer-level"].value = "easy";
+store["answer-level"].dispatch("change");
+
+store["btn-answer-regen"].dispatch("click");
+check("「重新生成」会忽略上次那份、重新问一次", chatCalls === 3, "calls=" + chatCalls);
+sandbox.PTAAI.chat = keepChat2;
+
+check("模型调用默认温度 0（同题同答案的前提）", /temperature: typeof o.temperature === "number" \? o.temperature : 0/.test(readFileSync(path.join(root, "assets/js/aiclient.js"), "utf8")));
 
 console.log("\n集成测试：" + ok + " 通过 / " + (ok + bad) + " 项");
 if (bad) process.exitCode = 1;

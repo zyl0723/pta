@@ -127,7 +127,10 @@
     var payload = {
       model: o.model,
       messages: o.messages || [{ role: "user", content: String(o.prompt == null ? "" : o.prompt) }],
-      stream: true
+      stream: true,
+      /* 同一道题 + 同样的语言/难度/模式，答案要尽量每次都一样：把随机性关掉（题不变、答案就不该变） */
+      temperature: typeof o.temperature === "number" ? o.temperature : 0,
+      top_p: typeof o.top_p === "number" ? o.top_p : 1
     };
 
     var req = fetchWithTimeout(url, {
