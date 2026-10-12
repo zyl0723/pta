@@ -562,11 +562,17 @@ check("状态行写明当前语言与难度", /C 语言 · 简单答案/.test(st
 store["code-lang"].value = "python";
 store["code-lang"].dispatch("change");
 flush();
-check("切到 Python 后本地检查/运行全部关掉", store["btn-check"].disabled && store["btn-run"].disabled && store["btn-check-run"].disabled && store["btn-fill-reference"].disabled && store["problem-select"].disabled && store["chk-strict"].disabled && store["btn-dev-run"].disabled && store["btn-dev-check"].disabled);
-check("切到 Python 后给出醒目提醒", !store["lang-warn"].classList.contains("hidden") && /Python/.test(store["lang-warn-name"].textContent));
+check("切到 Python 后「运行」那一套关掉，但「立即检查」还能用", !store["btn-check"].disabled && store["btn-run"].disabled && store["btn-check-run"].disabled && store["btn-fill-reference"].disabled && store["problem-select"].disabled && store["chk-strict"].disabled && store["btn-dev-run"].disabled && store["btn-dev-check"].disabled);
+check("切到 Python 后给出醒目提醒", !store["lang-warn"].classList.contains("hidden") && /Python/.test(store["lang-warn"].textContent) && /常见写法检查/.test(store["lang-warn"].textContent));
 check("切到 Python 后状态行跟着变", /Python · 简单答案/.test(store["lang-status"].textContent), store["lang-status"].textContent);
-check("切到 Python 后不再用 C 的规则做本地检查", /本机只装了 C 语言的检查规则/.test(store["summary"].innerHTML), store["summary"].innerHTML.slice(0, 90));
 check("切到 Python 后不会擅自改掉你写的代码", store["code"].value.indexOf("#include <stdio.h>") >= 0, store["code"].value.slice(0, 30));
+check("切到 Python 后改用 Python 的规则检查（不再拿 C 的规则乱报）", (() => {
+  store["code"].value = "n = input()\nfor i in range(n)\nprint i";
+  store["code"].dispatch("input");
+  flush();
+  return /print 后面要加括号/.test(store["findings"].innerHTML) && /少了冒号/.test(store["findings"].innerHTML) && !/少了 &/.test(store["findings"].innerHTML);
+})(), store["findings"].innerHTML.slice(0, 120));
+check("Python 的检查结果会说明「本机不做运行判断」", /常见写法检查没有发现问题|本机没有 Python 解释器/.test(store["summary"].innerHTML) || /个错误/.test(store["summary"].innerHTML), store["summary"].innerHTML.slice(0, 90));
 store["btn-sample"].dispatch("click");
 flush();
 check("切到 Python 后「载入示例」给的是 Python 代码", store["code"].value.indexOf("input().split()") >= 0 && store["code"].value.indexOf("#include") < 0, store["code"].value.slice(0, 40));
@@ -574,7 +580,7 @@ check("切到 Python 后示例代码用 Python 的占位提示", /Python 代码�
 check("语言选择记在本机", lsData.get("pta-code-lang") === "python");
 store["btn-run"].dispatch("click");
 flush();
-check("Python 下点「运行并对比」只提醒、不硬跑", /本机只装了 C 语言的解释器/.test(store["run-status"].textContent), store["run-status"].textContent);
+check("Python 下点「运行并对比」只提醒、不硬跑", /本机没有 Python 解释器/.test(store["run-status"].textContent), store["run-status"].textContent);
 
 store["problem-text"].value = "7-1 两数求和\n输入两个整数，输出它们的和。";
 store["btn-answer"].dispatch("click");
@@ -618,7 +624,7 @@ store["answer-level"].dispatch("change");
 for (const el of Object.values(store)) { el.classList._s.clear(); el._handlers = {}; }
 vm.runInContext(readFileSync(path.join(root, "assets/js/app.js"), "utf8"), sandbox, { filename: "app.js" });
 flush();
-check("重开页面还记得上次选的语言和难度", store["code-lang"].value === "python" && store["answer-level"].value === "hard" && store["btn-check"].disabled);
+check("重开页面还记得上次选的语言和难度", store["code-lang"].value === "python" && store["answer-level"].value === "hard" && store["btn-run"].disabled && !store["btn-check"].disabled);
 store["code-lang"].value = "c";
 store["code-lang"].dispatch("change");
 store["answer-level"].value = "easy";
@@ -1113,6 +1119,66 @@ check("留言板页面也是", new RegExp('BUILD_V = "' + versionJson.v + '"').t
 check("进来时会去读 version.json 并比对版本", /fetch\("version\.json\?t="/.test(appSrc) && /info\.v === BUILD_V/.test(appSrc));
 check("发现是新版本就自动刷新（只刷一次，防止来回刷）", /location\.replace\(base \+ "\?_v="/.test(appSrc) && /sessionStorage\.getItem\(UPDATE_KEY\) === v/.test(appSrc));
 check("切回标签页时也会再确认一次", /visibilitychange/.test(appSrc) && /visibilitychange/.test(boardSrc));
+
+console.log("=== 多语言：C++ 本地能检查运行，Python / Java 做写法检查 ===");
+store["code-lang"].value = "cpp";
+store["code-lang"].dispatch("change");
+store["stdin"].value = "";
+flush();
+check("C++ 也能用本机的检查和运行", !store["btn-check"].disabled && !store["btn-run"].disabled && !store["btn-dev-run"].disabled && store["lang-warn"].classList.contains("hidden"));
+check("说明里写明 C++ 支持基础写法", /iostream \+ cin\/cout/.test(html));
+
+store["code"].value = ['#include <iostream>', 'using namespace std;', '', 'int main() {', '    int a, b;', '    cin >> a >> b;', '    cout << a + b << endl;', '    return 0;', '}'].join("\n");
+store["code"].dispatch("input");
+flush();
+store["btn-check"].dispatch("click");
+check("基础 C++ 代码不会被误报", /没有发现问题/.test(store["summary"].innerHTML), store["summary"].innerHTML.slice(0, 90));
+store["stdin"].value = "3 4\n";
+store["btn-run"].dispatch("click");
+flush();
+check("基础 C++ 代码能真的跑出结果", /正常运行结束/.test(store["run-status"].textContent) && /7/.test(store["run-body"].innerHTML), store["run-status"].textContent);
+
+store["code"].value = ['#include <iostream>', 'int main() {', '    int a, b;', '    cin >> a >> b;', '    cout << a + b << end;', '    return 0;', '}'].join("\n");
+store["code"].dispatch("input");
+flush();
+store["btn-check"].dispatch("click");
+check("C++ 少了 using namespace std; 会明确指出来", /没写 using namespace std/.test(store["findings"].innerHTML), store["findings"].innerHTML.slice(0, 120));
+check("C++ 把 endl 写成 end 也会指出来", /endl 少写了一个 l/.test(store["findings"].innerHTML));
+
+store["code"].value = ['#include <bits/stdc++.h>', 'using namespace std;', 'int main(){ vector<int> v; cout << 1 << endl; return 0; }'].join("\n");
+store["code"].dispatch("input");
+flush();
+store["btn-check"].dispatch("click");
+check("用到 STL / bits/stdc++.h 时，本机老实说「不判」，不误报错误", /本机解释器不认的写法/.test(store["findings"].innerHTML) && !/个错误/.test(store["summary"].innerHTML), store["summary"].innerHTML.slice(0, 90));
+
+store["code-lang"].value = "java";
+store["code-lang"].dispatch("change");
+store["code"].value = ['public class Solution {', '    public static void main(String args) {', '        system.out.println(1);', '    }', '}'].join("\n");
+store["code"].dispatch("input");
+flush();
+store["btn-check"].dispatch("click");
+check("Java：类名不是 Main 会被指出来", /类名必须是 Main/.test(store["findings"].innerHTML));
+check("Java：main 签名不对会被指出来", /public static void main\(String\[\] args\)/.test(store["findings"].innerHTML));
+check("Java：system 小写会被指出来", /System 的首字母要大写/.test(store["findings"].innerHTML));
+
+store["code"].value = ['import java.util.Scanner;', '', 'public class Main {', '    public static void main(String[] args) {', '        Scanner sc = new Scanner(System.in);', '        int a = sc.nextInt(), b = sc.nextInt();', '        System.out.println(a + b);', '    }', '}'].join("\n");
+store["code"].dispatch("input");
+flush();
+store["btn-check"].dispatch("click");
+check("正确的 Java 代码不会被误报", /没有发现问题/.test(store["summary"].innerHTML), store["summary"].innerHTML.slice(0, 90));
+
+store["code-lang"].value = "python";
+store["code-lang"].dispatch("change");
+store["code"].value = ["n = int(input())", "for i in range(n):", "    print(i)"].join("\n");
+store["code"].dispatch("input");
+flush();
+store["btn-check"].dispatch("click");
+check("正确的 Python 代码不会被误报", /没有发现问题/.test(store["summary"].innerHTML), store["summary"].innerHTML.slice(0, 90));
+check("Python 的检查说明写清了本机不做运行判断", /本机没有 Python 解释器|常见写法检查/.test(store["summary"].innerHTML), store["summary"].innerHTML.slice(0, 100));
+
+store["code-lang"].value = "c";
+store["code-lang"].dispatch("change");
+flush();
 
 console.log("\n集成测试：" + ok + " 通过 / " + (ok + bad) + " 项");
 if (bad) process.exitCode = 1;

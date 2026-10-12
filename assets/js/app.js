@@ -347,12 +347,19 @@
     var level = curLevel();
     var mode = curMode();
     var isC = lang === "c";
-    var noLocal = "本机只装了 C 语言的检查规则和解释器：换回 C 语言才能用，或者用右边「答案与解析」交给你自己的 AI。";
-    ["btn-check", "btn-run", "btn-check-run", "btn-fill-reference", "btn-dev-check", "btn-dev-run"].forEach(function (id) {
+    var canRun = isC || lang === "cpp"; /* 本机解释器 C / C++ 都能跑（C++ 只认基础写法） */
+    var noLocal = "本机没有这个语言能用的解释器：运行不了，或者用右边「答案与解析」交给你自己的 AI。";
+    /* 「立即检查」所有语言都能用（C/C++ 真解析 + 各语言的常见写法规则）；只有运行那一套需要解释器 */
+    var check = $("btn-check");
+    if (check) {
+      check.disabled = false;
+      check.title = canRun ? "" : "本机没有这个语言的解释器，只做常见写法检查（缩进、冒号、类名、import、括号配对这类）。";
+    }
+    ["btn-run", "btn-check-run", "btn-fill-reference", "btn-dev-check", "btn-dev-run"].forEach(function (id) {
       var el = $(id);
       if (!el) return;
-      el.disabled = !isC;
-      el.title = isC ? "" : noLocal;
+      el.disabled = !canRun;
+      el.title = canRun ? "" : noLocal;
     });
     ["problem-select", "chk-strict"].forEach(function (id) {
       var el = $(id);
@@ -361,14 +368,21 @@
       el.title = isC ? "" : "示例数据和参考实现都是 C 语言的。";
     });
     var warn = $("lang-warn");
-    if (warn) warn.classList[isC ? "add" : "remove"]("hidden");
-    var warnName = $("lang-warn-name");
-    if (warnName) warnName.textContent = (LANG_LABEL[lang] || "这门") + "语言";
+    if (warn) {
+      warn.classList[canRun ? "add" : "remove"]("hidden");
+      if (!canRun) {
+        var name = LANG_LABEL[lang] || "这门语言";
+        warn.innerHTML = "当前语言是 <b>" + esc(name) + "</b>：浏览器里没有能用的 " + esc(name)
+          + " 解释器（真跑 Python / Java 要带几十 MB 的运行时，纯静态网页带不动），所以本机不能运行、也不能像编译器那样报全部语法错误"
+          + "——但「立即检查」仍然会做<b>常见写法检查</b>（缩进、冒号、类名、import、括号配对这些）。"
+          + "想看答案、让人逐行讲解，用右边的「答案与解析」「二次检查」——拼好的提示词里已经写明用的是 " + esc(name) + "。";
+      }
+    }
     var status = $("lang-status");
     if (status) {
       status.textContent = "当前：" + (LANG_LABEL[lang] || lang) + " · " + (LEVEL_LABEL[level] || level) + "答案"
         + " · " + (MODE_LABEL[mode] || mode) + "模式"
-        + (isC ? "" : "（本机不跑代码，交给你的 AI）");
+        + (canRun ? "" : "（本机只做写法检查，运行交给你的 AI）");
     }
     var box = $("code");
     if (box && PLACEHOLDERS[lang]) box.placeholder = PLACEHOLDERS[lang];
@@ -969,8 +983,8 @@
 
   /* 终端里的「检查」：复用本地静态检查，把结果打一份到终端里 */
   function devCheck() {
-    if (curLang() !== "c") {
-      devWrite("$ 检查\n本机只装了 C 语言的检查规则：把语言换回 C 才能在这里检查，或者用右边的「答案与解析」交给你自己的 AI。");
+    if (curLang() !== "c" && curLang() !== "cpp") {
+      devWrite("$ 检查\n本机没有 " + LANG_LABEL[curLang()] + " 解释器：终端里查不了，用右边的「答案与解析」交给你自己的 AI。");
       return;
     }
     analyzeNow(true);
@@ -995,8 +1009,8 @@
   }
 
   function devRun() {
-    if (curLang() !== "c") {
-      devWrite("$ 运行\n本机只装了 C 语言的解释器：把语言换回 C 才能运行，或者用右边的「答案与解析」交给你自己的 AI。");
+    if (curLang() !== "c" && curLang() !== "cpp") {
+      devWrite("$ 运行\n本机没有 " + LANG_LABEL[curLang()] + " 解释器：跑不了，用右边的「答案与解析」交给你自己的 AI。");
       return;
     }
     if (String($("dev-input").value).trim()) addDevInput();
@@ -1415,25 +1429,36 @@
   /* ---------- 静态检查 ---------- */
   function analyzeNow(deep) {
     exitRecheck();
-    if (curLang() !== "c") {
-      state.findings = [];
-      refreshGutter();
-      renderNoLocalCheck();
-      return;
-    }
+    var lang = curLang();
     var code = $("code").value;
     var result = { findings: [] };
     try {
-      result = analyzer.analyze(code);
+      result = analyzer.analyze(code, lang);
     } catch (err) {
       console.error(err);
     }
     var list = result.findings || [];
+    /* 本机只有 C / C++ 的解释器（同一个 JSCPP）：C++ 只认基础写法，不认的写法就老实说「本地不判」；
+       Python / Java 浏览器里没有能用的解释器，只做常见写法检查。 */
+    if (lang === "c" || lang === "cpp") {
+      var skip = (lang === "cpp" && analyzer.cppUnsupported) ? analyzer.cppUnsupported(code) : "";
+      if (skip) {
+        list.push({
+          severity: "info", line: 1, column: 1,
+          title: "这段代码用到了本机解释器不认的写法（" + skip + "）",
+          detail: "本机自带的解释器只认 C++ 的基础写法（iostream + cin/cout + 循环、数组）。这类写法在 PTA 上没问题，但本地判不了语法和运行，所以这一层先跳过，不给你乱报错。",
+          fix: "想看这段代码的问题，用右边的「答案与解析」或「二次检查」交给你自己的 AI。",
+          snippet: ""
+        });
+      } else {
+        /* 再叠两层「真」检查…… */
+        list = mergeEngineFindings(list, safeEngineCheck("syntax", code));
+        if (deep) list = mergeEngineFindings(list, safeEngineCheck("run", code));
+      }
+    }
     /* 再叠两层「真」检查，这样代码不完整也照样能报出真错误：
        ① 语法层（真解析，边打字就能跑）——少分号、括号不配对、语句写在函数外面……
        ② 试运行层（点「立即检查」/「运行」时跑一遍）——变量没声明、漏 &、数组越界、缺少 main…… */
-    list = mergeEngineFindings(list, safeEngineCheck("syntax", code));
-    if (deep) list = mergeEngineFindings(list, safeEngineCheck("run", code));
     state.findings = sortFindings(list);
     state.lastCheckDeep = !!deep;
     refreshGutter();
@@ -1489,14 +1514,6 @@
   }
 
   /* 选了非 C 语言：本地没有对应的检查规则，直接说清楚，别拿 C 的规则乱报 */
-  function renderNoLocalCheck() {
-    var lang = LANG_LABEL[curLang()] || "这门语言";
-    var summary = $("summary");
-    summary.className = "summary note";
-    summary.innerHTML = "当前语言是 <b>" + esc(lang) + "</b>：本机只装了 C 语言的检查规则，所以这里不做本地检查（免得拿 C 的规则去误报）。";
-    $("findings").innerHTML = '<div class="empty">想看「哪里写错了」，用右边的「答案与解析」或「二次检查」：把题目粘到右边，页面会拼好一段提问，用你自己的 AI 检查。提示词里已经写明语言和难度。</div>';
-  }
-
   function renderFindings() {
     var box = $("findings");
     var summary = $("summary");
@@ -1507,9 +1524,13 @@
 
     if (list.length === 0) {
       summary.className = "summary ok";
-      summary.innerHTML = (state.lastCheckDeep
-        ? "本地检查（语法 + 常见写法 + 内置解释器试跑）没有发现问题。"
-        : "没有发现问题：语法能解析，常见写法也没毛病。") + "可以点“运行并对比”用样例数据实测一下。";
+      var l = curLang();
+      summary.innerHTML = (l === "python" || l === "java"
+        ? "常见写法检查没有发现问题（本机没有 " + LANG_LABEL[l] + " 解释器，不做语法和运行判断；详细问题请用右边的「答案与解析」「二次检查」交给你的 AI）。"
+        : (state.lastCheckDeep
+          ? "本地检查（语法 + 常见写法 + 内置解释器试跑）没有发现问题。"
+          : "没有发现问题：语法能解析，常见写法也没毛病。"))
+        + (l === "python" || l === "java" ? "" : "可以点“运行并对比”用样例数据实测一下。");
     } else {
       summary.className = "summary " + (errors ? "bad" : (warns ? "warn" : "note"));
       var parts = [];
@@ -1563,8 +1584,8 @@
 
   /* ---------- 运行与对比 ---------- */
   function runNow() {
-    if (curLang() !== "c") {
-      $("run-status").textContent = "本机只装了 C 语言的解释器：把语言换回 C 才能运行，或者用右边的「答案与解析」交给你自己的 AI。";
+    if (curLang() !== "c" && curLang() !== "cpp") {
+      $("run-status").textContent = "本机没有 " + LANG_LABEL[curLang()] + " 解释器：运行不了，用右边的「答案与解析」「二次检查」交给你自己的 AI 吧。";
       $("run-body").innerHTML = "";
       return;
     }
@@ -1718,5 +1739,6 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();
+
 
 

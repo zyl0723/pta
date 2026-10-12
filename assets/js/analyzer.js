@@ -236,7 +236,7 @@
     return list;
   }
 
-  function analyze(source) {
+  function analyzeC(source) {
     var src = String(source == null ? "" : source);
     var masked = maskCode(src);
     var starts = lineStartsOf(src);
@@ -636,5 +636,289 @@
     return { findings: findings, symbols: symbols };
   }
 
-  global.PTAAnalyzer = { analyze: analyze, maskCode: maskCode };
+  /* ---------- 通用小工具：把一段代码按行过一遍，方便写各语言的规则 ---------- */
+  function eachLine(src, fn) {
+    var text = String(src == null ? "" : src);
+    var lines = text.split(/\r?\n/);
+    var starts = lineStartsOf(text);
+    for (var i = 0; i < lines.length; i++) fn(lines[i], i + 1, starts[i], maskCode(lines[i]));
+  }
+
+  function mkFinding(sev, line, column, title, detail, fix, snippet) {
+    return {
+      severity: sev, line: line, column: column, title: title,
+      detail: detail, fix: fix || "", snippet: String(snippet == null ? "" : snippet).replace(/\t/g, "    ")
+    };
+  }
+
+  /* 全角标点：所有语言都适用，抽出来共用 */
+  function fullwidthFindings(src) {
+    var out = [];
+    eachLine(src, function (text, line, start, masked) {
+      for (var i = 0; i < text.length; i++) {
+        var ch = text[i];
+        if (ch === "\t" || ch === " ") continue;
+        if (masked[i] !== ch) continue;
+        if (FULLWIDTH[ch]) {
+          out.push(mkFinding("error", line, i + 1, "这里用了中文标点「" + ch + "」",
+            "代码里只能用英文半角标点，中文标点编译器/解释器都不认。多半是从 Word、PPT 或网页复制过来的。",
+            "改成英文的 " + FULLWIDTH[ch] + "（切到英文输入法重新输入）。", text));
+        }
+      }
+    });
+    return out;
+  }
+
+  /* 括号是否配对（跳过字符串/注释） */
+  function unclosedBracket(src) {
+    var t = String(src == null ? "" : src);
+    var stack = [], line = 1, col = 1, i = 0;
+    while (i < t.length) {
+      var ch = t.charAt(i), next = t.charAt(i + 1);
+      if (ch === "\n") { line++; col = 1; i++; continue; }
+      if (ch === "/" && next === "/") { while (i < t.length && t.charAt(i) !== "\n") i++; continue; }
+      if (ch === "/" && next === "*") {
+        i += 2; col += 2;
+        while (i < t.length && !(t.charAt(i) === "*" && t.charAt(i + 1) === "/")) {
+          if (t.charAt(i) === "\n") { line++; col = 1; } else col++;
+          i++;
+        }
+        i += 2; col += 2; continue;
+      }
+      if (ch === '"' || ch === "'") {
+        var q = ch; i++; col++;
+        while (i < t.length && t.charAt(i) !== q) {
+          if (t.charAt(i) === "\\") { i += 2; col += 2; continue; }
+          if (t.charAt(i) === "\n") { line++; col = 1; } else col++;
+          i++;
+        }
+        i++; col++; continue;
+      }
+      if (ch === "(" || ch === "{" || ch === "[") stack.push({ ch: ch, line: line, column: col });
+      else if (ch === ")" || ch === "}" || ch === "]") {
+        var want = ch === ")" ? "(" : (ch === "}" ? "{" : "[");
+        if (stack.length && stack[stack.length - 1].ch === want) stack.pop();
+        else if (stack.length) return { ch: stack[stack.length - 1].ch, line: stack[stack.length - 1].line, column: stack[stack.length - 1].column, kind: "open" };
+        else return { ch: ch, line: line, column: col, kind: "close" };
+      }
+      i++; col++;
+    }
+    if (!stack.length) return null;
+    return { ch: stack[stack.length - 1].ch, line: stack[stack.length - 1].line, column: stack[stack.length - 1].column, kind: "open" };
+  }
+
+  function pairChar(ch) {
+    if (ch === "(") return ")";
+    if (ch === "{") return "}";
+    if (ch === "[") return "]";
+    if (ch === ")") return "(";
+    if (ch === "}") return "{";
+    return "[";
+  }
+
+  /* ---------- Python：常见写法检查（浏览器里没有 Python 解释器，只查高把握度的问题） ---------- */
+  function analyzePython(source) {
+    var src = String(source == null ? "" : source);
+    var out = fullwidthFindings(src);
+    var sawTab = false, sawSpace = false;
+    eachLine(src, function (text, line, start, masked) {
+      var t = masked;
+      var indent = /^[ \t]*/.exec(text)[0];
+      if (indent.indexOf("\t") >= 0) sawTab = true;
+      if (indent.length && indent.indexOf(" ") >= 0) sawSpace = true;
+      if (indent.indexOf("\t") >= 0 && indent.indexOf(" ") >= 0) {
+        out.push(mkFinding("error", line, 1, "缩进里 tab 和空格混用了",
+          "Python 靠缩进判断代码块，同一行里两种缩进混用会让解释器直接报错（IndentationError）。",
+          "把这一行的缩进统一改成 4 个空格。", text));
+      }
+      var head = /^\s*(if|elif|else|for|while|def|class|try|except|finally|with)\b/.exec(t);
+      if (head && !/:\s*$/.test(t.replace(/\s+$/, "")) && !/\\\s*$/.test(t)) {
+        out.push(mkFinding("error", line, text.replace(/\s+$/, "").length + 1, "这一行结尾少了冒号 :",
+          "Python 里 " + head[1] + " 这类语句结尾必须写一个英文冒号 :，下一行再缩进写代码块。",
+          "在这一行末尾补一个 :（英文冒号）。", text));
+      }
+      var pm = /^\s*print\s+[^(\s=]/.exec(t);
+      if (pm) {
+        out.push(mkFinding("error", line, pm.index + 1, "print 后面要加括号",
+          "PTA 用的是 Python 3，print 是函数，必须写成 print(内容)。写成 print 内容 是 Python 2 的写法，会报语法错误。",
+          "改成 print(内容)，例如 print(a + b)。", text));
+      }
+      var asg = /\b(if|while)\b[^:]*?[^=!<>+\-*/%]=(?!=)/.exec(t);
+      if (asg) {
+        out.push(mkFinding("error", line, asg.index + asg[0].length, "条件里的 = 应该是 ==",
+          "if / while 的条件里要用 ==（比较），写成一个 = 是赋值，Python 会直接报错。",
+          "把这一处 = 改成 ==。", text));
+      }
+    });
+    if (sawTab && sawSpace) {
+      out.push(mkFinding("warning", 1, 1, "整个文件里 tab 和空格混着缩进",
+        "有的行用 tab 缩进、有的行用空格，Python 会因为「缩进不一致」报错（TabError）。",
+        "全选代码 → 把缩进统一成 4 个空格（编辑器里一般有「把 tab 转成空格」）。", ""));
+    }
+    var maskedAll = maskCode(src);
+    var inputVars = {};
+    eachLine(src, function (text, line, start, masked) {
+      var m = /^\s*(\w+)\s*=\s*input\s*\(/.exec(masked);
+      if (m) inputVars[m[1]] = true;
+    });
+    Object.keys(inputVars).forEach(function (name) {
+      var re = new RegExp("\\b" + name + "\\b\\s*[+\\-*/<>]|range\\s*\\(\\s*" + name + "\\b");
+      var mm = re.exec(maskedAll);
+      if (mm) {
+        var ln = posOf(lineStartsOf(src), mm.index).line;
+        out.push(mkFinding("warning", ln, 1, "从 input() 读回来的是文字，不是数字",
+          "input() 拿到的是字符串。直接拿它加减、比较，或者放进 range()，Python 会报错（TypeError）。",
+          "先转成数字再算：n = int(input())；一行多个数用 a, b = map(int, input().split())。",
+          (src.split(/\r?\n/)[ln - 1] || "")));
+      }
+    });
+    return out;
+  }
+
+  /* ---------- Java：常见写法检查 ---------- */
+  function analyzeJava(source) {
+    var src = String(source == null ? "" : source);
+    var out = fullwidthFindings(src);
+    var maskedAll = maskCode(src);
+    var linesAll = src.split(/\r?\n/);
+    var startsAll = lineStartsOf(src);
+
+    var cls = /(?:public\s+)?class\s+([A-Za-z_]\w*)/.exec(maskedAll);
+    if (!cls) {
+      out.push(mkFinding("error", 1, 1, "找不到 class（PTA 上必须写 public class Main）",
+        "Java 代码必须放在一个类里面，PTA 判题要求类名就是 Main（文件名不用管）。",
+        "加上：public class Main { ... }，把代码写在里面。", linesAll[0] || ""));
+    } else if (cls[1] !== "Main") {
+      var ln1 = posOf(startsAll, cls.index).line;
+      out.push(mkFinding("error", ln1, 1, "类名必须是 Main",
+        "PTA 判题只认 Main 这个类名（你写的是 " + cls[1] + "），类名不对会直接判「编译错误」。",
+        "把 class " + cls[1] + " 改成 class Main。", linesAll[ln1 - 1] || ""));
+    }
+    if (!/public\s+static\s+void\s+main\s*\(\s*String\s*(\[\s*\]|\.\.\.)\s*\w+\s*\)/.test(maskedAll)) {
+      var mIdx = maskedAll.indexOf("main");
+      var ln2 = mIdx >= 0 ? posOf(startsAll, mIdx).line : 1;
+      out.push(mkFinding("error", ln2, 1, "main 方法要写成 public static void main(String[] args)",
+        "PTA 就是靠这个固定入口来运行你的程序的，少一个关键字都会判「编译错误」。",
+        "写成：public static void main(String[] args) { ... }。", linesAll[ln2 - 1] || ""));
+    }
+    eachLine(src, function (text, line, start, masked) {
+      var bad = /\b[Ss]ystem\s*\.\s*out\s*\.\s*([A-Za-z]+)/.exec(masked);
+      if (bad && bad[1] !== "println" && bad[1] !== "print" && bad[1] !== "printf") {
+        out.push(mkFinding("error", line, bad.index + 1, "输出方法名写错了：" + bad[1],
+          "Java 里常用的是 System.out.println(...) / System.out.print(...)，没有 " + bad[1] + " 这个方法。",
+          "改成 System.out.println(...)。", text));
+      }
+      if (/\bsystem\s*\.\s*out\b/.test(masked) && !/\bSystem\s*\./.test(masked)) {
+        out.push(mkFinding("error", line, 1, "System 的首字母要大写",
+          "Java 区分大小写，小写的 system 不是那个类。",
+          "改成 System.out.println(...)。", text));
+      }
+      if (/\bScanner\b/.test(masked) && !/import\s+java\.util\.(Scanner|\*)\s*;/.test(maskedAll)) {
+        out.push(mkFinding("error", line, 1, "用了 Scanner 却没有 import",
+          "Scanner 在 java.util 包里，没有 import 会判「编译错误」。",
+          "在文件最上面加一行：import java.util.Scanner;。", text));
+      }
+      var cmp = /\b([A-Za-z_]\w*)\s*==\s*"/.exec(masked);
+      if (cmp) {
+        out.push(mkFinding("warning", line, cmp.index + 1, "Java 里字符串比较要用 equals",
+          "== 在 Java 里比的是「是不是同一个对象」，内容一样也可能不相等。",
+          "改成 " + cmp[1] + ".equals(\"字符串\")。", text));
+      }
+      if (/\.nextInt\s*\(/.test(masked) && /\.nextLine\s*\(/.test(maskedAll)) {
+        out.push(mkFinding("info", line, 1, "nextInt() 和 nextLine() 混用要当心",
+          "nextInt() 只读数字、不读走那一行的回车，紧接着用 nextLine() 会读到空行。",
+          "在 nextInt() 后面补一句 sc.nextLine(); 先把回车吃掉。", text));
+      }
+      /* 语句行结尾少了分号 */
+      var stmtStart = /^\s*(?:[A-Za-z_][\w\.\[\]<>]*\s+\w|return\b|break\b|continue\b|throw\b|System\b|this\b|super\b|new\b|\+\+|--|\(?[\w\.]+\(.*\))/.exec(masked);
+      if (stmtStart
+        && !/[;{}:,\\]\s*$/.test(masked)
+        && !/\b(if|else|for|while|switch|case|default|do|try|catch|finally|class|interface|enum|public|private|protected|static|final|import|package|synchronized|throws)\b/.test(stmtStart[0])
+        && !/[.+\-*/&|=?(,]\s*$/.test(masked)
+        && !/^\s*(\/\/|\*|\/\*)/.test(text)) {
+        out.push(mkFinding("error", line, text.replace(/\s+$/, "").length + 1, "这一行结尾少了分号 ;",
+          "Java 每条语句结尾都要写英文分号 ;，这里没写会判「编译错误」。",
+          "在这一行末尾补一个 ;（英文分号）。", text));
+      }
+    });
+    var br = unclosedBracket(src);
+    if (br) {
+      out.push(mkFinding("error", br.line, br.column,
+        br.kind === "close" ? ("这个 " + br.ch + " 前面没有对应的 " + pairChar(br.ch)) : ("这个 " + br.ch + " 没有配对的 " + pairChar(br.ch)),
+        "括号必须成对出现，不配对的话 Java 编译不过。",
+        "补上（或删掉）对应的 " + pairChar(br.ch) + "。", linesAll[br.line - 1] || ""));
+    }
+    return out;
+  }
+
+  /* ---------- C++：在 C 规则之上再加几条 ---------- */
+  function analyzeCpp(source) {
+    var out = [];
+    var src = String(source == null ? "" : source);
+    var maskedAll = maskCode(src);
+    var hasIo = /\b(cout|cin|endl)\b/.test(maskedAll);
+    var hasUsing = /using\s+namespace\s+std\s*;/.test(maskedAll);
+    var hasIostream = /#\s*include\s*<\s*(iostream|bits\/stdc\+\+\.h)\s*>/.test(src);
+    if (hasIo && !hasIostream) {
+      out.push(mkFinding("error", 1, 1, "用了 cin / cout 却没有 #include <iostream>",
+        "cin、cout、endl 都在 iostream 里，不包含这个头文件会判「编译错误」。",
+        "在文件最上面加一行：#include <iostream>。", ""));
+    }
+    if (hasIo && !hasUsing && !/std\s*::/.test(maskedAll)) {
+      out.push(mkFinding("error", 1, 1, "用了 cin / cout 但没写 using namespace std;",
+        "没有 using namespace std;，编译器不知道 cout 是哪个命名空间里的名字，会报一堆「找不到」的错。",
+        "在 #include 后面加一行：using namespace std;（或者把 cin / cout 写成 std::cin / std::cout）。", ""));
+    }
+    eachLine(src, function (text, line, start, masked) {
+      var usingM = /\busing\s+([A-Za-z_]+)\s+std\s*;/.exec(masked);
+      if (usingM && usingM[1] !== "namespace") {
+        out.push(mkFinding("error", line, usingM.index + 1, "using namespace std; 拼错了",
+          "中间那个词是 namespace（你写的是 " + usingM[1] + "），写错的话编译器不认识这一行。",
+          "改成：using namespace std;。", text));
+      }
+      if (/<<\s*end\s*;/.test(masked)) {
+        out.push(mkFinding("error", line, 1, "endl 少写了一个 l",
+          "cout << ... << end; 里的 end 不是换行，应该是 endl。",
+          "改成 endl。", text));
+      }
+      if (/#\s*include\s*<\s*iostream\.h\s*>/.test(text)) {
+        out.push(mkFinding("error", line, 1, "老式头文件 iostream.h",
+          "带 .h 的 iostream.h 是老编译器的写法，现在的 C++ 用不带 .h 的版本。",
+          "改成 #include <iostream>，并加上 using namespace std;。", text));
+      }
+    });
+    return out;
+  }
+
+  /* 内置解释器只认 C++ 的基础写法；用到这些写法时本地不做语法/运行判断（免得误报） */
+  function cppUnsupported(source) {
+    var t = String(source == null ? "" : source);
+    var masked = maskCode(t);
+    if (/#\s*include\s*<\s*bits\/stdc\+\+\.h\s*>/.test(t)) return "bits/stdc++.h";
+    if (/\bstd\s*::/.test(masked)) return "std::";
+    var hdr = /#\s*include\s*<\s*([A-Za-z_]+)\s*>/.exec(t);
+    var known = { iostream: 1, cstdio: 1, stdio: 1, cstring: 1, cmath: 1, math: 1, cstdlib: 1, stdlib: 1, ctime: 1, cctype: 1, ctype: 1, iomanip: 1, string: 1 };
+    if (hdr && !known[String(hdr[1]).replace(/\.h$/, "")]) return "<" + hdr[1] + ">";
+    if (/\b(vector|map|set|queue|stack|priority_queue|unordered_map|pair|list|deque|algorithm|max_element|min_element|to_string|substr)\b|auto\s+\w+\s*=/.test(masked)) return "STL / 容器 / auto";
+    return "";
+  }
+
+  /* ---------- 按语言分发 ---------- */
+  function analyze(source, lang) {
+    var which = lang || "c";
+    if (which === "python") return { findings: analyzePython(source), symbols: {} };
+    if (which === "java") return { findings: analyzeJava(source), symbols: {} };
+    var result = analyzeC(source);
+    if (which === "cpp") {
+      var extra = analyzeCpp(source);
+      if (extra.length) result.findings = result.findings.concat(extra);
+      result.findings.sort(function (x, y) { return x.line - y.line || x.column - y.column; });
+    }
+    return result;
+  }
+
+  global.PTAAnalyzer = { analyze: analyze, maskCode: maskCode, cppUnsupported: cppUnsupported };
 })(typeof window !== "undefined" ? window : globalThis);
+
+
+

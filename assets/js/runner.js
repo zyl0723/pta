@@ -401,7 +401,7 @@
     /* 读入类程序有个通病：没给输入（或给少了）时读到的是 EOF，变量就是随机值，
        后面报出来的「变量没赋值 / 整数溢出」都是没输入造成的，属于误报，这里一律不报。
        漏 &、数组越界、除以零这些是真错误，照报。 */
-    var readsInput = /\b(scanf|getchar|gets|fgets|getline)\s*\(/.test(text);
+    var readsInput = /\b(scanf|getchar|gets|fgets|getline)\s*\(/.test(text) || /\bcin\s*>>/.test(text);
     if (input.trim() === "" && readsInput) return [];
     if (readsInput && /没有赋值|整数溢出|超出|overflow/i.test(String(e.detail) + " " + String(e.title))) return [];
     if (/没有赋值/.test(String(e.detail))) return [];
