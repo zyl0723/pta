@@ -617,6 +617,18 @@
     if (el) el.textContent = text;
   }
 
+  /* 二次检查的输出：把「改法：」那几行高亮出来，让人一眼看到「这一行该怎么改」 */
+  function renderRecheckOut(text) {
+    var box = $("recheck-out");
+    if (!box) return;
+    box.innerHTML = String(text == null ? "" : text).split("\n").map(function (line) {
+      var safe = esc(line);
+      if (/^\s*(改法|改成|建议改成|修复)/.test(line)) return '<span class="fix-line">' + safe + "</span>";
+      if (/^\s*\d+\.\s*\*\*第/.test(line)) return '<span class="item-line">' + safe + "</span>";
+      return safe;
+    }).join("\n");
+  }
+
   function copyResult(box, name, isText) {
     var text = !box ? "" : (isText ? box.textContent : box.value);
     if (!text) { setAiStatus("还没有可复制的" + name + "。"); return; }
@@ -1264,6 +1276,7 @@
     if (kind === "recheck") {
       beginRecheck();
       target = { panel: null, body: $("recheck-out"), note: null, mode: "text" };
+      target.render = "recheck";
     } else {
       target = outputFor(kind);
       target.mode = "value";
@@ -1283,7 +1296,8 @@
       prompt: text,
       onDelta: function (d, all) {
         if (target.mode === "text") {
-          target.body.textContent = all;
+          if (target.render === "recheck") renderRecheckOut(all);
+          else target.body.textContent = all;
         } else {
           target.body.value = all;
           target.body.scrollTop = target.body.scrollHeight;

@@ -17,9 +17,15 @@ for (const m of html.matchAll(/<[^>]*\bid="([^"]+)"[^>]*>/g)) {
   if (cls) classById[m[1]] = cls[1].split(/\s+/).filter(Boolean);
 }
 function El(id) {
+  /* innerHTML 和 textContent 像真实 DOM 一样联动：写 innerHTML 之后 textContent 也能读到纯文本 */
+  const stripTags = (s) => String(s).replace(/<[^>]*>/g, "");
   return {
     id, tagName: "DIV",
-    value: "", innerHTML: "", textContent: "",
+    value: "", _html: null, _text: "",
+    get textContent() { return this._text; },
+    set textContent(v) { this._text = String(v == null ? "" : v); this._html = null; },
+    get innerHTML() { return this._html == null ? this._text : this._html; },
+    set innerHTML(v) { this._html = String(v == null ? "" : v); this._text = stripTags(this._html); },
     className: "", checked: false, disabled: false, scrollTop: 0,
     style: {}, _handlers: {},
     classList: {
@@ -339,9 +345,13 @@ check("提醒后会把答案框显示出来", !store["panel-answer"].classList.c
 
 store["answer-body"].value = "标准答案：scanf(\"%d %d\", &a, &b); printf(\"%d\", a + b);";
 store["prompt-out"].value = "";
-sandbox.PTAAI.chat = function (opts) { opts.onDelta("d", "第 3 行：变量 b 没有读入。\n第 9 行：输出格式不对。"); opts.onDone(); return { cancel: function () {} }; };
+sandbox.PTAAI.chat = function (opts) { opts.onDelta("d", "1. **第 3 行** `int b;`\n   为什么：b 声明了但没有读入，后面 a+b 用的是随机值。\n   改法：`scanf(\"%d\", &b);`\n2. **第 9 行** `printf(\"%d\", a + b);`\n   为什么：输出少了换行，PTA 会判格式错误。\n   改法：`printf(\"%d\\n\", a + b);`"); opts.onDone(); return { cancel: function () {} }; };
 store["btn-recheck"].dispatch("click");
 check("有题目和答案后拼出的二次检查提示词已发出", /第 3 行/.test(store["recheck-out"].textContent), store["recheck-out"].textContent.slice(0, 60));
+check("二次检查里每条都明确写出「改法」", (store["recheck-out"].textContent.match(/改法：/g) || []).length >= 2, store["recheck-out"].textContent.slice(0, 80));
+check("「改法：」那几行在页面上被高亮出来", /class="fix-line"/.test(store["recheck-out"].innerHTML));
+check("每条以「第 X 行 + 那一行原代码」开头", /class="item-line"/.test(store["recheck-out"].innerHTML) && /第 3 行/.test(store["recheck-out"].innerHTML));
+check("二次检查提示词要求改法能直接复制替换、不用改也要写明", /改好以后的那一行代码原样打出来/.test(store["prompt-out"].value) && /这一行不用改/.test(store["prompt-out"].value) && /改完以后的完整代码/.test(store["prompt-out"].value));
 check("二次检查结果覆盖了原来的检查列表", !store["recheck-out"].classList.contains("hidden") && store["findings"].innerHTML === "");
 check("总结区标明这是 AI 的二次检查结果", /AI/.test(store["summary"].innerHTML), store["summary"].innerHTML.slice(0, 80));
 check("二次检查提示词要求对照答案逐行检查", /对照/.test(store["prompt-out"].value) && /标准答案/.test(store["prompt-out"].value));

@@ -330,6 +330,9 @@ pre.stdout {
   font: 400 13px/21px var(--mono); color: var(--text-soft);
   background: #fdf7fa; border: 1px solid #e7d2dc; border-radius: 8px; padding: 10px 12px;
 }
+/* 二次检查里「改法：」那一行高亮成绿色：直接告诉你这行要怎么改 */
+.recheck-out .fix-line { background: #e6f6ec; border-radius: 4px; padding: 0 4px; color: #14603f; font-weight: 650; }
+.recheck-out .item-line { color: #5e2f47; font-weight: 700; }
 
 /* ---------- 「答案与解析」三段式显示（淡粉 → 深粉，逐段加深） ---------- */
 .answer-parts { display: flex; flex-direction: column; gap: 16px; margin-top: 12px; }
