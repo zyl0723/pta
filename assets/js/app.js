@@ -14,7 +14,7 @@
   var HINT_WEB = "下面这段就是发给 AI 的内容。想直接在这里出结果就点「在本站生成」；想用你自己的 AI 网页，就点「复制提示词」再粘贴过去。";
 
   /* 本文件对应的版本号：必须和仓库根目录 version.json 里的 v 一致（发版时一起改） */
-  var BUILD_V = "20261011b";
+  var BUILD_V = "20261012a";
 
   var SEV = {
     error: { label: "错误", cls: "sev-error", mark: "✖", hint: "这样写编译器一定会报错" },
@@ -75,6 +75,7 @@
     fillProblemSelect();
     bindEvents();
     initWelcome();
+    initLangTip();
     initHints();
     devGreet();
     closeFloat(); /* 小黑框默认收起 */
@@ -156,6 +157,20 @@
     $("btn-check-run").addEventListener("click", function () { analyzeNow(true); runNow(); });
     $("btn-undo").addEventListener("click", function () { goHistory(-1); });
     $("btn-redo").addEventListener("click", function () { goHistory(1); });
+    $("btn-copy-code").addEventListener("click", function () {
+      var box = $("code");
+      var text = box ? box.value : "";
+      var btn = $("btn-copy-code");
+      if (!String(text).trim()) {
+        if (btn) { btn.textContent = "代码是空的"; setTimeout(function () { btn.textContent = "复制代码"; }, 1500); }
+        return;
+      }
+      copyText(text, function (ok) {
+        if (!btn) return;
+        btn.textContent = ok ? "已复制 ✓" : "复制失败";
+        setTimeout(function () { btn.textContent = "复制代码"; }, 1500);
+      });
+    });
     $("btn-clear").addEventListener("click", function () {
       $("code").value = "";
       refreshGutter();
@@ -218,10 +233,11 @@
     $("btn-float-close").addEventListener("click", closeFloat);
     $("btn-dev-send").addEventListener("click", addDevInput);
     $("dev-input").addEventListener("keydown", onDevInputKey);
-    $("btn-copy-part1").addEventListener("click", function () { copyResult($("part-plain"), "第 ① 段（纯答案代码）", true); });
+    $("btn-copy-part1").addEventListener("click", function () { copyResult($("part-plain"), "第 ② 段（纯答案代码）", true); });
     $("btn-copy-read").addEventListener("click", function () { copyResult($("part-read"), "第 ⓪ 段（读题复述）", true); });
-    $("btn-copy-part2").addEventListener("click", function () { copyResult($("part-annotated"), "第 ② 段（带注释的代码）", true); });
-    $("btn-copy-part3").addEventListener("click", function () { copyResult($("part-pitfalls"), "第 ③ 段（容易出错的地方）", true); });
+    $("btn-copy-hint").addEventListener("click", function () { copyResult($("part-hint"), "第 ① 段（提示思路）", true); });
+    $("btn-copy-part2").addEventListener("click", function () { copyResult($("part-annotated"), "第 ③ 段（带注释的代码）", true); });
+    $("btn-copy-part3").addEventListener("click", function () { copyResult($("part-pitfalls"), "第 ④ 段（容易出错的地方）", true); });
     $("answer-body").addEventListener("input", function () {
       renderAnswerParts($("answer-body").value);
     });
@@ -404,6 +420,7 @@
     refreshGutter();
     analyzeNow();
     flushSnapshot();
+    if (!langTipMuted(curLang())) showLangTip(curLang()); /* 换语言时把这个语言的检查限制讲清楚 */
     if (box && typeof box.focus === "function") box.focus();
   }
 
@@ -415,6 +432,79 @@
   function onModeChange() {
     lsSet(MODE_KEY, curMode());
     applyLangAndLevel();
+  }
+
+  /* ---------- 切换语言时的说明弹窗：把这个语言的检查限制讲清楚 ---------- */
+  var LANG_TIP_KEY = "pta-lang-tip-mute";
+
+  var LANG_TIPS = {
+    c: {
+      title: "用 C 语言：本机能帮你到什么程度",
+      html: "<p><b>能真跑、能真报错。</b>本机带了一个 C 解释器（开源项目 JSCPP，MIT 许可），「立即检查」会把常见写法错误、真语法错误（精确到第几行第几列）、还有试运行出来的错误（漏 &amp;、数组越界、变量没声明、缺少 main……）全都指出来；「运行并对比」和终端里能真的把代码跑起来。</p>"
+        + "<p><b>它的边界：</b>它覆盖的是<b>基础题常用语法和标准库</b>（scanf / printf / 字符串 / 数组 / 循环 / 函数）。C99 之后的一些高级写法、复杂宏、个别标准库函数它不一定支持——遇到它不认的写法，页面会明确说「无法运行」，<b>不会给你一个假结论</b>。</p>"
+        + "<p><b>注意：</b>本地跑的是解释器而不是 PTA 上的 gcc/clang，极少数写法可能和判题结果有差别，最终以 PTA 为准。</p>"
+    },
+    cpp: {
+      title: "用 C++：本机能帮你到什么程度",
+      html: "<p><b>基础写法能真跑。</b>本机解释器支持 <code>#include &lt;iostream&gt;</code> + <code>cin</code> / <code>cout</code> / <code>endl</code> + 循环、数组、函数这些基础写法，「立即检查」「运行并对比」都能用；另外还有 C++ 专属检查：用了 cin/cout 却没 <code>#include &lt;iostream&gt;</code>、<b>没写 <code>using namespace std;</code></b>、<code>endl</code> 写成 <code>end</code>、老式 <code>iostream.h</code>。</p>"
+        + "<p><b>它不认的写法（会明确告诉你「本地不判」）：</b><code>std::</code> 前缀、<code>bits/stdc++.h</code>、STL 容器与算法（vector / string / map / set / sort…）、<code>auto</code>。这些在 PTA 上没问题，但本机解释器不支持——遇到时页面会说明「这一层先跳过」，<b>绝对不会乱报错</b>。</p>"
+        + "<p><b>建议：</b>想验证这类写法对不对，用右边的「答案与解析」「二次检查」交给你自己的 AI。</p>"
+    },
+    python: {
+      title: "用 Python：本机能帮你到什么程度",
+      html: "<p><b>本机不能运行 Python。</b>浏览器里跑真 Python 要么是 Pyodide（核心 + 标准库十几 MB），要么是 Skulpt / Brython 这类需要放宽安全策略（允许 <code>eval</code>）的方案，都不适合这个纯静态、离线可用的页面。所以「运行并对比」和终端里的运行都关掉了。</p>"
+        + "<p><b>但「立即检查」还能用</b>，它会查这些新手最常见的写法问题：缩进里 tab 和空格混用、<code>if / for / while / def</code> 等语句结尾漏冒号、<code>print x</code>（Python 2 写法，要写 <code>print(x)</code>）、条件里把 <code>=</code> 写成 <code>==</code>、<code>input()</code> 读回来的字符串没转 int 就直接算数、中文全角标点。</p>"
+        + "<p><b>想要答案、逐行讲解、出练习题</b>：用右边的「答案与解析」「提问」「练习」「二次检查」，把题目和代码交给你自己的 AI（提示词里会写明用的是 Python 3、难度、写法模式）。</p>"
+    },
+    java: {
+      title: "用 Java：本机能帮你到什么程度",
+      html: "<p><b>本机不能运行 Java。</b>浏览器里的 Java 运行时（DoppioJVM / CheerpJ 之类）都要几十 MB，还要额外的 JDK 运行时文件，静态网页背不动，所以「运行并对比」和终端里的运行都关掉了。</p>"
+        + "<p><b>但「立即检查」还能用</b>，它会查这些 PTA 上最容易直接判「编译错误」的点：类名必须是 <code>Main</code>、入口必须是 <code>public static void main(String[] args)</code>、<code>System.out.println</code> 的拼写（小写 <code>system</code>、<code>println</code> 写错都报）、用了 <code>Scanner</code> 却忘了 <code>import java.util.Scanner;</code>、字符串用 <code>==</code> 比较（要用 <code>.equals</code>）、括号配对、语句漏分号。</p>"
+        + "<p><b>想要答案、逐行讲解、出练习题</b>：用右边的「答案与解析」「提问」「练习」「二次检查」，交给你自己的 AI（提示词里会写明 Java、类名必须是 Main、难度、写法模式）。</p>"
+    }
+  };
+
+  function langTipMuted(lang) {
+    try {
+      var list = JSON.parse(lsGet(LANG_TIP_KEY) || "[]");
+      return Array.isArray(list) && list.indexOf(lang) >= 0;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function muteLangTip(lang) {
+    try {
+      var list = JSON.parse(lsGet(LANG_TIP_KEY) || "[]");
+      if (!Array.isArray(list)) list = [];
+      if (list.indexOf(lang) < 0) list.push(lang);
+      lsSet(LANG_TIP_KEY, JSON.stringify(list));
+    } catch (err) { /* 存不了就算了 */ }
+  }
+
+  function showLangTip(lang) {
+    var box = $("lang-tip");
+    var tip = LANG_TIPS[lang];
+    if (!box || !tip) return;
+    if ($("lang-tip-title")) $("lang-tip-title").textContent = tip.title;
+    if ($("lang-tip-body")) $("lang-tip-body").innerHTML = tip.html;
+    if ($("chk-lang-tip-mute")) $("chk-lang-tip-mute").checked = false;
+    box.classList.remove("hidden");
+  }
+
+  function closeLangTip() {
+    var box = $("lang-tip");
+    if (!box) return;
+    if ($("chk-lang-tip-mute") && $("chk-lang-tip-mute").checked) muteLangTip(curLang());
+    box.classList.add("hidden");
+  }
+
+  function initLangTip() {
+    var box = $("lang-tip");
+    if (!box) return;
+    $("btn-lang-tip-x").addEventListener("click", closeLangTip);
+    $("btn-lang-tip-ok").addEventListener("click", closeLangTip);
+    box.addEventListener("click", function (e) { if (e.target === box) closeLangTip(); });
   }
 
   /* ---------- 「答案与解析」的复用：同一道题 + 同样语言/难度/模式，答案要和上次一样 ---------- */
@@ -602,6 +692,9 @@
     if (kind === "practice") {
       setOutNote("practice-note", "还没有生成。");
       $("panel-practice-out").classList.remove("hidden");
+      /* 练习题生成在左栏，滚过去 + 闪一下，免得用户以为「没生成」 */
+      $("panel-practice-out").scrollIntoView({ behavior: "smooth", block: "center" });
+      flashOnce($("panel-practice-out"));
     } else if (kind === "ask") {
       setOutNote("ask-note", "还没有生成。");
     } else {
@@ -622,13 +715,24 @@
       });
     }
     updateRunNote();
-    if (!(opts && opts.silent)) $("panel-ai").scrollIntoView({ behavior: "smooth", block: "center" });
+    /* 练习题的结果在左栏，提示词面板在右栏：练习就别把视线拉回右栏了 */
+    if (!(opts && opts.silent) && kind !== "practice") $("panel-ai").scrollIntoView({ behavior: "smooth", block: "center" });
+    /* 配好 API 了就直接开始生成，省得用户以为点了没反应（没配就只给提示词） */
+    if (kind === "practice" && hasAiConfig()) runAi();
   }
 
   /* ---------- 生成结果的展示区：答案在右栏、练习题在左栏、二次检查覆盖检查结果 ---------- */
   function setOutNote(id, text) {
     var el = $(id);
     if (el) el.textContent = text;
+  }
+
+  /* 结果出来时闪一下，让用户一眼看到「东西在这儿」 */
+  function flashOnce(el) {
+    if (!el || !el.classList) return;
+    el.classList.remove("flash-once");
+    el.classList.add("flash-once");
+    setTimeout(function () { el.classList.remove("flash-once"); }, 2600);
   }
 
   /* 二次检查的输出：把「改法：」那几行高亮出来，让人一眼看到「这一行该怎么改」 */
@@ -658,13 +762,14 @@
   }
 
   /* ---------- 「答案与解析」三段式：把 AI 的回答按 ① ② ③ 拆开显示 ---------- */
-  var PART_RE = /第\s*([0123０１２３零一二三])\s*部分/;
+  var PART_RE = /第\s*([0-4０-４零一二三四])\s*部分/;
 
   function partNumber(ch) {
     if (ch === "0" || ch === "０" || ch === "零") return 0;
     if (ch === "1" || ch === "１" || ch === "一") return 1;
     if (ch === "2" || ch === "２" || ch === "二") return 2;
     if (ch === "3" || ch === "３" || ch === "三") return 3;
+    if (ch === "4" || ch === "４" || ch === "四") return 4;
     return -1;
   }
 
@@ -677,7 +782,7 @@
 
   /* 按 AI 输出的三段标题切分；切不出来就返回 ok:false，交给回退逻辑 */
   function splitAnswer(text) {
-    var out = { ok: false, p0: "", p1: "", p2: "", p3: "" };
+    var out = { ok: false, old: false, p0: "", p1: "", p2: "", p3: "", p4: "" };
     var t = String(text == null ? "" : text).replace(/\r\n/g, "\n");
     if (!t.trim()) return out;
     var lines = t.split("\n");
@@ -692,32 +797,46 @@
       if (!dup) marks.push({ part: n, i: i });
     }
     if (!marks.length) return out;
+    /* 新格式：第 1 部分是「提示思路」；老格式（没有提示思路）按老的编号对应显示 */
+    var newFormat = /第\s*[1１一]\s*部分[^\n]*提示思路/.test(t);
+    out.old = !newFormat;
     var hasBody = false;
     for (var j = 0; j < marks.length; j++) {
       var end = j + 1 < marks.length ? marks[j + 1].i : lines.length;
       var body = stripFence(lines.slice(marks[j].i + 1, end).join("\n"));
-      if (marks[j].part === 0) out.p0 = body;
-      else if (marks[j].part === 1) { out.p1 = body; hasBody = true; }
-      else if (marks[j].part === 2) out.p2 = body;
-      else out.p3 = body;
+      var n = marks[j].part;
+      if (n === 0) { out.p0 = body; continue; }
+      if (newFormat) {
+        if (n === 1) out.p1 = body;
+        else if (n === 2) { out.p2 = body; hasBody = true; }
+        else if (n === 3) out.p3 = body;
+        else out.p4 = body;
+      } else {
+        if (n === 1) { out.p2 = body; hasBody = true; }
+        else if (n === 2) out.p3 = body;
+        else out.p4 = body;
+      }
     }
-    out.ok = hasBody; /* 只有 0 段（读题复述）不算分好段 */
+    out.ok = hasBody; /* 只有 ⓪ 段（读题复述）不算分好段 */
     return out;
   }
 
   function renderAnswerParts(text, quiet) {
     var r = splitAnswer(text);
     if (quiet && !r.ok) return;
-    $("part-plain").textContent = r.p1;
-    $("part-annotated").textContent = r.p2;
-    $("part-pitfalls").textContent = r.p3;
+    $("part-plain").textContent = r.p2;
+    $("part-annotated").textContent = r.p3;
+    $("part-pitfalls").textContent = r.p4;
     if ($("part-read")) $("part-read").textContent = r.p0;
+    if ($("part-hint")) $("part-hint").textContent = r.p1;
     var readWrap = $("ans-read-wrap");
     if (readWrap) readWrap.classList[r.p0 ? "remove" : "add"]("hidden");
+    var hintWrap = $("ans-hint-wrap");
+    if (hintWrap) hintWrap.classList[r.p1 ? "remove" : "add"]("hidden");
     var hint = $("answer-parse-hint");
     if (!hint) return;
     if (!r.ok && String(text || "").trim()) {
-      hint.textContent = "这次 AI 没有按 ⓪ ① ② ③ 的格式输出，所以几段没分开；完整内容在下面「原始回答」里，展开就能看、也能直接复制。";
+      hint.textContent = "这次 AI 没有按 ⓪①②③④ 的格式输出，所以几段没分开；完整内容在下面「原始回答」里，展开就能看、也能直接复制。";
       hint.classList.remove("hidden");
       if ($("answer-raw-wrap")) $("answer-raw-wrap").open = true;
     } else {
@@ -892,7 +1011,7 @@
     if (!document.head || typeof document.head.appendChild !== "function") { termState = "failed"; return; }
     termState = "loading";
     var s = document.createElement("script");
-    s.src = "assets/vendor/xterm.js?v=20261011b";
+    s.src = "assets/vendor/xterm.js?v=20261012a";
     s.onload = function () { termState = "idle"; initTerminal(); };
     s.onerror = function () { termState = "failed"; };
     document.head.appendChild(s);
@@ -1326,6 +1445,10 @@
         }
         if (target.parts) renderAnswerParts(target.body.value);
         if (cacheKey) answerCacheSet(cacheKey, target.body.value, c.model);
+        if (kind === "practice") {
+          $("panel-practice-out").scrollIntoView({ behavior: "smooth", block: "center" });
+          flashOnce($("panel-practice-out"));
+        }
         if (kind === "recheck") {
           $("summary").className = "summary note";
           $("summary").innerHTML = "以下是用你生成的答案对照后，AI 给出的重新检查结果（模型：" + esc(c.model) + "）。";
@@ -1739,6 +1862,9 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();
+
+
+
 
 
 

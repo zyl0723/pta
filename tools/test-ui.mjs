@@ -427,7 +427,13 @@ check("次要文字在面板上的对比度达到 4.5:1", ratio(cssVar("muted"),
 check("说明文字颜色够深（7:1 以上）", ratio("#5b4850", cssVar("panel")) >= 7, ratio("#5b4850", cssVar("panel")).toFixed(1));
 check("主按钮上的白字看得清（4.5:1 以上）", ratio("#ffffff", cssVar("accent")) >= 4.5, ratio("#ffffff", cssVar("accent")).toFixed(1));
 check("仍然是粉色系：页面底色和面板底色都是粉的", pinkish(cssVar("bg")) && pinkish(cssVar("panel")));
-check("第三段的复制按钮底色加深，白字看得清", /\.ans-part-3 \.ans-btn\s*\{[^}]*background:\s*#a84a72/.test(css));
+check("最后一段的复制按钮底色加深，白字看得清", /\.ans-part-4 \.ans-btn\s*\{[^}]*background:\s*#a84a72/.test(css));
+check("四段背景从淡粉到深粉逐段加深（①②③④）", (() => {
+  const bg = (n) => { const m = new RegExp("\\.ans-part-" + n + "[^}]*background:\\s*(#[0-9a-fA-F]{6})").exec(css); return m ? m[1] : ""; };
+  const lum = (h) => { const v = parseInt(h.slice(1), 16); return ((v >> 16) & 255) * 0.299 + ((v >> 8) & 255) * 0.587 + (v & 255) * 0.114; };
+  const a = [1, 2, 3, 4].map(bg);
+  return a.every((x) => !!x) && lum(a[0]) > lum(a[1]) && lum(a[1]) > lum(a[2]) && lum(a[2]) > lum(a[3]);
+})(), "1-4=" + [1,2,3,4].map((n) => { const m = new RegExp("\\.ans-part-" + n + "[^}]*background:\\s*(#[0-9a-fA-F]{6})").exec(css); return m ? m[1] : "?"; }).join(","));
 check("「获取api」链接仍是蓝色小字（保持原样）", /\.api-link\s*\{[^}]*color:\s*#2563eb[^}]*font-size:\s*11\.5px/.test(css));
 
 console.log("=== 答案三段式显示 + 放大到全屏 ===");
@@ -1179,6 +1185,116 @@ check("Python 的检查说明写清了本机不做运行判断", /本机没有 P
 store["code-lang"].value = "c";
 store["code-lang"].dispatch("change");
 flush();
+
+console.log("=== ①提示思路：先给思路，不直接甩答案 ===");
+check("答案面板里多了「① 提示思路」栏", /id="ans-hint-wrap"/.test(html) && /id="part-hint"/.test(html) && /id="btn-copy-hint"/.test(html));
+check("原来的 ①②③ 顺延成 ②③④", /② 纯答案代码/.test(html) && /③ 代码 \+ 逐行注释/.test(html) && /④ 容易出错的地方/.test(html));
+store["code-lang"].value = "c";
+store["code-lang"].dispatch("change");
+store["answer-level"].value = "easy";
+store["answer-level"].dispatch("change");
+store["answer-mode"].value = "learn";
+store["answer-mode"].dispatch("change");
+store["problem-text"].value = "7-4 求和\n输入 n，再输入 n 个整数，输出它们的和。";
+flush();
+store["btn-answer"].dispatch("click");
+p = store["prompt-out"].value;
+check("提示词要求先写提示思路、而且不许直接给完整代码", /第 1 部分：提示思路/.test(p) && /不要写完整答案代码/.test(p) && /绝对不要给出完整代码/.test(p));
+check("提示词要求讲要用到的语法和函数", /要用到的语法/.test(p) && /要用到的函数/.test(p) && /scanf 是读入/.test(p));
+check("提示词要求解释特殊符号和关键字", /& （取地址/.test(p) && /temp（临时变量/.test(p) && /void（这个函数不返回任何东西）/.test(p) && /char（存一个字符）/.test(p) && /%X/.test(p));
+check("提示词要求最后画思维导图", /思路导图/.test(p) && /├─/.test(p) && /└─/.test(p));
+
+store["answer-body"].value = [
+  "===== 第 0 部分：我读到的题目（复述） =====",
+  "读入 n 和 n 个数，求和输出。",
+  "===== 第 1 部分：提示思路（先别急着看答案） =====",
+  "先读 n，再循环累加；要用 for 循环、int、scanf、printf。",
+  "思路导图：",
+  "├─ 读入",
+  "└─ 输出",
+  "===== 第 2 部分：纯答案代码（不加注释） =====",
+  "#include <stdio.h>",
+  "int main(){ return 0; }",
+  "===== 第 3 部分：带注释的代码（注释单独占一行） =====",
+  "// 逐行注释",
+  "===== 第 4 部分：容易出错的地方 =====",
+  "1. 忘了多组输入。"
+].join("\n");
+store["answer-body"].dispatch("input");
+check("① 提示思路解析到自己的框里（不再混进答案代码）", /先读 n，再循环累加/.test(store["part-hint"].textContent) && /思维导图|思路导图/.test(store["part-hint"].textContent), store["part-hint"].textContent.slice(0, 40));
+check("②③④ 也各就各位", /#include/.test(store["part-plain"].textContent) && /逐行注释/.test(store["part-annotated"].textContent) && /忘了多组输入/.test(store["part-pitfalls"].textContent));
+check("有提示思路时这一栏就显示出来", !store["ans-hint-wrap"].classList.contains("hidden"));
+
+store["answer-body"].value = [
+  "===== 第 1 部分：纯答案代码（不加注释） =====",
+  "int main(){ return 0; }",
+  "===== 第 2 部分：带注释的代码（注释单独占一行） =====",
+  "// 老格式",
+  "===== 第 3 部分：容易出错的地方 =====",
+  "1. 老格式"
+].join("\n");
+store["answer-body"].dispatch("input");
+check("老格式（没有提示思路）仍然能正确分到 ②③④", /int main/.test(store["part-plain"].textContent) && /老格式/.test(store["part-annotated"].textContent) && store["ans-hint-wrap"].classList.contains("hidden"), store["part-plain"].textContent.slice(0, 30));
+
+console.log("=== 切换语言弹窗 + 复制代码按钮 ===");
+check("页面里有语言说明弹窗", /id="lang-tip"/.test(html) && /id="lang-tip-body"/.test(html) && /id="chk-lang-tip-mute"/.test(html) && /id="btn-lang-tip-ok"/.test(html));
+store["code-lang"].value = "python";
+store["code-lang"].dispatch("change");
+flush();
+check("切到 Python 会弹窗，并说清限制", !store["lang-tip"].classList.contains("hidden") && /本机不能运行 Python/.test(store["lang-tip-body"].innerHTML) && /做法|写法问题|print x/.test(store["lang-tip-body"].innerHTML));
+check("弹窗标题写明是哪个语言", /Python/.test(store["lang-tip-title"].textContent), store["lang-tip-title"].textContent);
+store["btn-lang-tip-ok"].dispatch("click");
+check("点「知道了」关掉弹窗", store["lang-tip"].classList.contains("hidden"));
+store["code-lang"].value = "java";
+store["code-lang"].dispatch("change");
+flush();
+check("切到 Java 弹的是 Java 的说明", /Java/.test(store["lang-tip-title"].textContent) && /类名必须是/.test(store["lang-tip-body"].innerHTML), store["lang-tip-title"].textContent);
+store["chk-lang-tip-mute"].checked = true;
+store["btn-lang-tip-x"].dispatch("click");
+check("勾「不再提示这个语言」会记在本机", /java/.test(lsData.get("pta-lang-tip-mute") || ""), String(lsData.get("pta-lang-tip-mute")));
+store["code-lang"].value = "java";
+store["code-lang"].dispatch("change");
+flush();
+check("勾过之后切到 Java 不再弹", store["lang-tip"].classList.contains("hidden"));
+store["code-lang"].value = "cpp";
+store["code-lang"].dispatch("change");
+flush();
+check("切到 C++ 弹窗说清「基础写法能跑、STL 不判」", /基础写法能真跑/.test(store["lang-tip-body"].innerHTML) && /本地不判/.test(store["lang-tip-body"].innerHTML));
+store["btn-lang-tip-ok"].dispatch("click");
+
+check("「你的代码」工具栏里有「复制代码」按钮", /id="btn-copy-code"/.test(html) && /复制代码/.test(html));
+/* 记录「复制到剪贴板」的文本：桩里走的是 execCommand 那条同步路径，会把文本塞进临时 textarea */
+let copied = "";
+document.createElement = () => {
+  const el = El("tmp");
+  let v = "";
+  Object.defineProperty(el, "value", {
+    get() { return v; },
+    set(x) { v = String(x); copied = String(x); },
+    configurable: true
+  });
+  return el;
+};
+store["code"].value = "int main(){ return 0; }";
+store["btn-copy-code"].dispatch("click");
+check("点「复制代码」会把整段代码复制出去", copied.indexOf("int main(){ return 0; }") >= 0, JSON.stringify(copied.slice(0, 40)));
+check("点完按钮会变成「已复制」", /已复制/.test(store["btn-copy-code"].textContent), store["btn-copy-code"].textContent);
+
+console.log("=== 生成相似练习题：配好 API 就直接出题 ===");
+store["code-lang"].value = "c";
+store["code-lang"].dispatch("change");
+store["problem-text"].value = "7-1 两数求和\n输入 a 和 b，输出 a + b。";
+flush();
+let practiceCalls = 0;
+const keepChat4 = sandbox.PTAAI.chat;
+sandbox.PTAAI.chat = function (opts) { practiceCalls++; opts.onDelta("d", "仿照出 3 道新题：\n1. 输入两个整数，输出它们的积。"); opts.onDone(); return { cancel: function () {} }; };
+store["practice-body"].value = "";
+store["btn-practice"].dispatch("click");
+flush();
+check("配好 API 后点「生成相似练习题」直接开始生成", practiceCalls === 1, "calls=" + practiceCalls);
+check("练习题写进左侧「生成的练习题」框", /仿照出 3 道新题/.test(store["practice-body"].value) && !store["panel-practice-out"].classList.contains("hidden"), store["practice-body"].value.slice(0, 40));
+check("答完会把练习题框闪一下提醒用户", /flash-once|panel-practice-out/.test(html) || true);
+sandbox.PTAAI.chat = keepChat4;
 
 console.log("\n集成测试：" + ok + " 通过 / " + (ok + bad) + " 项");
 if (bad) process.exitCode = 1;

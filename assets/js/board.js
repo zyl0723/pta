@@ -21,7 +21,7 @@
   "use strict";
 
   /* 本文件对应的版本号：必须和仓库根目录 version.json 里的 v 一致（发版时一起改） */
-  var BUILD_V = "20261011b";
+  var BUILD_V = "20261012a";
   var UPDATE_KEY = "pta-reloaded-for";
 
   var CONFIG = {
@@ -117,3 +117,4 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();
+
